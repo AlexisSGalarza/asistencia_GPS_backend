@@ -1,1 +1,12 @@
 Backend/claves.env
+bin/
+lib/
+lib64
+pyvenv.cfg
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.dart_tool/
+build/
+.flutter-plugins
