@@ -54,7 +54,11 @@ class Perimetro(models.Model):
         c = 2 * atan2(sqrt(a), sqrt(1 - a))
 
         distancia = R * c
-        return distancia <= self.radio_metros, round(distancia, 2)
+        # Agregamos 30 metros de tolerancia por la imprecisión natural del GPS
+        tolerancia_gps = 30
+        esta_dentro = distancia <= (self.radio_metros + tolerancia_gps)
+        
+        return esta_dentro, round(distancia, 2)
 
 
 class Asistencia(models.Model):

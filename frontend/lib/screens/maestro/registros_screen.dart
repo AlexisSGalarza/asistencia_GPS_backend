@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import '../../widgets/animated_list_item.dart';
 import '../login/login_screen.dart';
 import 'marcar_asistencia_screen.dart';
 import 'horario_screen.dart';
@@ -94,13 +95,22 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
       }
 
       // Ordenar por fecha descendente ANTES de formatear
-      final sortedKeys = porFecha.keys.toList()
-        ..sort((a, b) => b.compareTo(a));
+      final sortedKeys = porFecha.keys.toList()..sort((a, b) => b.compareTo(a));
 
       // Formatear fechas y construir lista
       final meses = [
-        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+        'Enero',
+        'Febrero',
+        'Marzo',
+        'Abril',
+        'Mayo',
+        'Junio',
+        'Julio',
+        'Agosto',
+        'Septiembre',
+        'Octubre',
+        'Noviembre',
+        'Diciembre',
       ];
       for (final key in sortedKeys) {
         final entry = porFecha[key]!;
@@ -170,7 +180,12 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
                               ),
                             )
                           else
-                            ..._registros.map((r) => _buildRegistroCard(r)),
+                            ..._registros.asMap().entries.map(
+                              (e) => AnimatedListItem(
+                                index: e.key,
+                                child: _buildRegistroCard(e.value),
+                              ),
+                            ),
                           const SizedBox(height: 20),
                         ],
                       ),
@@ -469,7 +484,11 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
             CircleAvatar(
               backgroundColor: const Color(0xFFC62828).withValues(alpha: 0.15),
               radius: 35,
-              child: const Icon(Icons.logout, color: Color(0xFFC62828), size: 35),
+              child: const Icon(
+                Icons.logout,
+                color: Color(0xFFC62828),
+                size: 35,
+              ),
             ),
             const SizedBox(height: 18),
             const Text(

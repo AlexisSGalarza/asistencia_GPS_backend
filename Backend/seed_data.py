@@ -57,6 +57,9 @@ print("\n--- Usuarios de prueba listos ---")
 print("Admin: admin@escuela.com / admin123")
 print("Maestro: maestro@escuela.com / maestro123")
 print("Supervisor: supervisor@escuela.com / supervisor123")
+javier.suarezg @uanl.edu.mx
+alex123gala.35@gmail.com
+hola123
 
 # Crear horarios L-V para el maestro
 from apps.users.models import Horario

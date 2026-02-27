@@ -73,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Text(
                     'Hello!',
                     style: TextStyle(
-                      fontFamily: 'Merriweather',
+                      fontFamily: 'Montserrat',
                       fontSize: 36,
                       fontWeight: FontWeight.bold,
                       color: const Color(0xFF6B2D8B),
@@ -87,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Text(
                     'Welcome back, Teacher',
                     style: TextStyle(
-                      fontFamily: 'Merriweather',
+                      fontFamily: 'Montserrat',
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: const Color(0xFF3D3D3D),
@@ -149,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Text(
               'Login',
               style: TextStyle(
-                fontFamily: 'Merriweather',
+                fontFamily: 'Montserrat',
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: const Color(0xFF3D3D3D),
@@ -177,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
               decoration: InputDecoration(
                 hintText: 'Email',
                 hintStyle: TextStyle(
-                  fontFamily: 'Merriweather',
+                  fontFamily: 'Montserrat',
                   color: Colors.grey[400],
                 ),
                 prefixIcon: const Icon(
@@ -218,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
               decoration: InputDecoration(
                 hintText: 'Password',
                 hintStyle: TextStyle(
-                  fontFamily: 'Merriweather',
+                  fontFamily: 'Montserrat',
                   color: Colors.grey[400],
                 ),
                 prefixIcon: const Icon(
@@ -268,7 +268,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Text(
                 'Forgot Password?',
                 style: TextStyle(
-                  fontFamily: 'Merriweather',
+                  fontFamily: 'Montserrat',
                   color: const Color(0xFF6B2D8B),
                   fontWeight: FontWeight.w500,
                 ),
@@ -319,7 +319,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     : Text(
                         'Login',
                         style: TextStyle(
-                          fontFamily: 'Merriweather',
+                          fontFamily: 'Montserrat',
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -358,10 +358,17 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = false);
 
       if (result['success'] == true) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MarcarAsistenciaScreen()),
-        );
+        final rol = ApiService.rolUsuario.toLowerCase();
+        if (rol == 'administrador' || rol == 'admin') {
+          Navigator.pushReplacementNamed(context, '/admin/dashboard');
+        } else if (rol == 'supervisor') {
+          Navigator.pushReplacementNamed(context, '/supervisor/incidencias');
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MarcarAsistenciaScreen()),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -24,13 +24,19 @@ class PerfilScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     const SizedBox(height: 20),
-                    _buildStatsRow(),
+                    animatedSection(delay: 0, child: _buildStatsRow()),
                     const SizedBox(height: 20),
-                    _buildInfoSection(),
+                    animatedSection(delay: 80, child: _buildInfoSection()),
                     const SizedBox(height: 15),
-                    _buildActionsSection(context),
+                    animatedSection(
+                      delay: 160,
+                      child: _buildActionsSection(context),
+                    ),
                     const SizedBox(height: 15),
-                    _buildDangerZone(context),
+                    animatedSection(
+                      delay: 240,
+                      child: _buildDangerZone(context),
+                    ),
                     const SizedBox(height: 30),
                   ],
                 ),
@@ -40,6 +46,28 @@ class PerfilScreen extends StatelessWidget {
         ),
       ),
       bottomNavigationBar: _buildBottomNav(context),
+    );
+  }
+
+  // Helper: anima una sección con fade + slide desde abajo
+  Widget animatedSection({required int delay, required Widget child}) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 350 + delay),
+      curve: Curves.easeOut,
+      builder: (context, value, ch) {
+        final progress =
+            ((value - delay / (350.0 + delay)) / (350.0 / (350.0 + delay)))
+                .clamp(0.0, 1.0);
+        return Opacity(
+          opacity: progress,
+          child: Transform.translate(
+            offset: Offset(0, 24 * (1.0 - progress)),
+            child: ch,
+          ),
+        );
+      },
+      child: child,
     );
   }
 
@@ -72,7 +100,7 @@ class PerfilScreen extends StatelessWidget {
                   Text(
                     'Mi Perfil',
                     style: TextStyle(
-                      fontFamily: 'Merriweather',
+                      fontFamily: 'Montserrat',
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -121,7 +149,7 @@ class PerfilScreen extends StatelessWidget {
                 maxLines: 1,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontFamily: 'Merriweather',
+                  fontFamily: 'Montserrat',
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -130,7 +158,10 @@ class PerfilScreen extends StatelessWidget {
               const SizedBox(height: 6),
               // Rol badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(20),
@@ -146,7 +177,7 @@ class PerfilScreen extends StatelessWidget {
                     Text(
                       ApiService.rolUsuario,
                       style: const TextStyle(
-                        fontFamily: 'Merriweather',
+                        fontFamily: 'Montserrat',
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -171,8 +202,18 @@ class PerfilScreen extends StatelessWidget {
       final fecha = DateTime.tryParse(creadoEn);
       if (fecha != null) {
         final meses = [
-          'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-          'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+          'Ene',
+          'Feb',
+          'Mar',
+          'Abr',
+          'May',
+          'Jun',
+          'Jul',
+          'Ago',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dic',
         ];
         miembroDesde = '${meses[fecha.month - 1]} ${fecha.year}';
       }
@@ -241,7 +282,7 @@ class PerfilScreen extends StatelessWidget {
             child: Text(
               value,
               style: TextStyle(
-                fontFamily: 'Merriweather',
+                fontFamily: 'Montserrat',
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: color,
@@ -252,7 +293,7 @@ class PerfilScreen extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              fontFamily: 'Merriweather',
+              fontFamily: 'Montserrat',
               fontSize: 9,
               color: Color(0xFF9E9E9E),
             ),
@@ -271,10 +312,21 @@ class PerfilScreen extends StatelessWidget {
       final fecha = DateTime.tryParse(creadoEn);
       if (fecha != null) {
         final meses = [
-          'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+          'Enero',
+          'Febrero',
+          'Marzo',
+          'Abril',
+          'Mayo',
+          'Junio',
+          'Julio',
+          'Agosto',
+          'Septiembre',
+          'Octubre',
+          'Noviembre',
+          'Diciembre',
         ];
-        miembroDesde = '${fecha.day} de ${meses[fecha.month - 1]} ${fecha.year}';
+        miembroDesde =
+            '${fecha.day} de ${meses[fecha.month - 1]} ${fecha.year}';
       }
     }
 
@@ -302,7 +354,7 @@ class PerfilScreen extends StatelessWidget {
               Text(
                 'Información Personal',
                 style: TextStyle(
-                  fontFamily: 'Merriweather',
+                  fontFamily: 'Montserrat',
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF6B2D8B),
@@ -337,8 +389,12 @@ class PerfilScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoTile(IconData icon, String label, String value,
-      {bool showDivider = true}) {
+  Widget _buildInfoTile(
+    IconData icon,
+    String label,
+    String value, {
+    bool showDivider = true,
+  }) {
     return Column(
       children: [
         Padding(
@@ -362,7 +418,7 @@ class PerfilScreen extends StatelessWidget {
                     Text(
                       label,
                       style: const TextStyle(
-                        fontFamily: 'Merriweather',
+                        fontFamily: 'Montserrat',
                         fontSize: 11,
                         color: Color(0xFF9E9E9E),
                       ),
@@ -373,7 +429,7 @@ class PerfilScreen extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       maxLines: 2,
                       style: const TextStyle(
-                        fontFamily: 'Merriweather',
+                        fontFamily: 'Montserrat',
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF3D3D3D),
@@ -417,7 +473,10 @@ class PerfilScreen extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Divider(color: Colors.grey.withValues(alpha: 0.1), height: 1),
+            child: Divider(
+              color: Colors.grey.withValues(alpha: 0.1),
+              height: 1,
+            ),
           ),
           _buildActionTile(
             icon: Icons.help_outline,
@@ -462,7 +521,7 @@ class PerfilScreen extends StatelessWidget {
                   Text(
                     label,
                     style: const TextStyle(
-                      fontFamily: 'Merriweather',
+                      fontFamily: 'Montserrat',
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF3D3D3D),
@@ -530,7 +589,7 @@ class PerfilScreen extends StatelessWidget {
               const Text(
                 'Cerrar Sesión',
                 style: TextStyle(
-                  fontFamily: 'Merriweather',
+                  fontFamily: 'Montserrat',
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFFC62828),
@@ -547,15 +606,12 @@ class PerfilScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             CircleAvatar(
-              backgroundColor:
-                  const Color(0xFFC62828).withValues(alpha: 0.15),
+              backgroundColor: const Color(0xFFC62828).withValues(alpha: 0.15),
               radius: 35,
               child: const Icon(
                 Icons.logout,
@@ -567,7 +623,7 @@ class PerfilScreen extends StatelessWidget {
             const Text(
               '¿Cerrar sesión?',
               style: TextStyle(
-                fontFamily: 'Merriweather',
+                fontFamily: 'Montserrat',
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF3D3D3D),
@@ -601,7 +657,7 @@ class PerfilScreen extends StatelessWidget {
                   child: const Text(
                     'Cancelar',
                     style: TextStyle(
-                      fontFamily: 'Merriweather',
+                      fontFamily: 'Montserrat',
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF6B2D8B),
@@ -617,9 +673,7 @@ class PerfilScreen extends StatelessWidget {
                       Navigator.pop(ctx);
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const LoginScreen(),
-                        ),
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
                       );
                     });
                   },
@@ -633,7 +687,7 @@ class PerfilScreen extends StatelessWidget {
                   child: const Text(
                     'Salir',
                     style: TextStyle(
-                      fontFamily: 'Merriweather',
+                      fontFamily: 'Montserrat',
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -688,7 +742,7 @@ class PerfilScreen extends StatelessWidget {
                     decoration: InputDecoration(
                       labelText: 'Contraseña actual',
                       labelStyle: const TextStyle(
-                        fontFamily: 'Merriweather',
+                        fontFamily: 'Montserrat',
                         fontSize: 13,
                       ),
                       border: OutlineInputBorder(
@@ -707,7 +761,7 @@ class PerfilScreen extends StatelessWidget {
                     decoration: InputDecoration(
                       labelText: 'Nueva contraseña',
                       labelStyle: const TextStyle(
-                        fontFamily: 'Merriweather',
+                        fontFamily: 'Montserrat',
                         fontSize: 13,
                       ),
                       border: OutlineInputBorder(
@@ -726,7 +780,7 @@ class PerfilScreen extends StatelessWidget {
                     decoration: InputDecoration(
                       labelText: 'Confirmar contraseña',
                       labelStyle: const TextStyle(
-                        fontFamily: 'Merriweather',
+                        fontFamily: 'Montserrat',
                         fontSize: 13,
                       ),
                       border: OutlineInputBorder(
@@ -756,7 +810,7 @@ class PerfilScreen extends StatelessWidget {
                         child: const Text(
                           'Cancelar',
                           style: TextStyle(
-                            fontFamily: 'Merriweather',
+                            fontFamily: 'Montserrat',
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF6B2D8B),
@@ -837,7 +891,7 @@ class PerfilScreen extends StatelessWidget {
                             : const Text(
                                 'Guardar',
                                 style: TextStyle(
-                                  fontFamily: 'Merriweather',
+                                  fontFamily: 'Montserrat',
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
@@ -906,12 +960,12 @@ class PerfilScreen extends StatelessWidget {
           selectedItemColor: const Color(0xFF6B2D8B),
           unselectedItemColor: Colors.grey,
           selectedLabelStyle: const TextStyle(
-            fontFamily: 'Merriweather',
+            fontFamily: 'Montserrat',
             fontSize: 11,
             fontWeight: FontWeight.bold,
           ),
           unselectedLabelStyle: const TextStyle(
-            fontFamily: 'Merriweather',
+            fontFamily: 'Montserrat',
             fontSize: 10,
           ),
           items: const [

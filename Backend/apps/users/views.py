@@ -4,6 +4,8 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from django.core.cache import cache
+from django.core.mail import send_mail
+from django.conf import settings as django_settings
 import random
 import string
 
@@ -129,7 +131,7 @@ class SolicitarRecuperacionView(APIView):
             )
 
         try:
-            usuario = Usuario.objects.get(correo=correo, activo=True)
+            usuario = Usuario.objects.get(correo__iexact=correo, activo=True)
         except Usuario.DoesNotExist:
             # No revelamos si el correo existe o no (seguridad)
             return Response({
@@ -147,10 +149,41 @@ class SolicitarRecuperacionView(APIView):
             'intentos': 0,
         }, timeout=900)  # 15 min
 
-        return Response({
+        # Enviar el código por correo electrónico
+        asunto = 'Código de recuperación de contraseña - Asistencia GPS'
+        mensaje = (
+            f'Hola {usuario.nombre},\n\n'
+            f'Tu código de recuperación es:\n\n'
+            f'  {codigo}\n\n'
+            f'Este código expira en 15 minutos.\n'
+            f'Si no solicitaste este código, ignora este correo.\n\n'
+            f'-- Asistencia GPS'
+        )
+
+        try:
+            send_mail(
+                asunto,
+                mensaje,
+                django_settings.DEFAULT_FROM_EMAIL,
+                [correo],
+                fail_silently=False,
+            )
+        except Exception as e:
+            # Si falla el envío de email, borrar el código del caché
+            cache.delete(cache_key)
+            return Response(
+                {'error': f'No se pudo enviar el correo. Verifica la configuración SMTP. Detalle: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        respuesta = {
             'mensaje': 'Si el correo está registrado, recibirás un código de recuperación.',
-            'codigo_debug': codigo,  # ← Solo para desarrollo, quitar en producción
-        })
+        }
+        # En modo DEBUG, devolver el código para facilitar pruebas
+        if django_settings.DEBUG:
+            respuesta['codigo_debug'] = codigo
+
+        return Response(respuesta)
 
 
 class ConfirmarRecuperacionView(APIView):

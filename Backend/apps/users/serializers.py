@@ -63,7 +63,7 @@ class LoginSerializer(serializers.Serializer):
 
     def validate(self, data):
         try:
-            usuario = Usuario.objects.get(correo=data['correo'])
+            usuario = Usuario.objects.get(correo__iexact=data['correo'])
         except Usuario.DoesNotExist:
             raise serializers.ValidationError('Credenciales inválidas.')
 

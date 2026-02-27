@@ -47,17 +47,17 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
       setState(() => _isLoading = false);
 
       if (result['success'] == true) {
+        // Siempre avanzamos al Paso 2 (el backend retorna 200 en ambos casos
+        // por seguridad y no revela si el correo está registrado)
         setState(() {
           _codigoEnviado = true;
-          _codigoDebug = result['codigo_debug']?.toString();
-        });
-        _mostrarExito('Código enviado. Revisa tu correo.');
-      } else {
-        // Aún así mostramos éxito (seguridad: no revelar si existe el correo)
-        setState(() {
-          _codigoEnviado = true;
+          _codigoDebug = result['codigo_debug']
+              ?.toString(); // null si correo no existe
         });
         _mostrarExito('Si el correo está registrado, recibirás un código.');
+      } else {
+        // Error real (ej. fallo de red devuelto por el servidor)
+        _mostrarError(result['mensaje'] ?? 'Error al solicitar recuperación');
       }
     } catch (e) {
       if (!mounted) return;
@@ -130,7 +130,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                 const Text(
                   '¡Contraseña actualizada!',
                   style: TextStyle(
-                    fontFamily: 'Merriweather',
+                    fontFamily: 'Montserrat',
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF2E7D32),
@@ -141,7 +141,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                   'Ya puedes iniciar sesión con tu nueva contraseña.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontFamily: 'Merriweather',
+                    fontFamily: 'Montserrat',
                     fontSize: 13,
                     color: Color(0xFF757575),
                   ),
@@ -169,7 +169,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                   child: const Text(
                     'Ir al Login',
                     style: TextStyle(
-                      fontFamily: 'Merriweather',
+                      fontFamily: 'Montserrat',
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -195,7 +195,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
       SnackBar(
         content: Text(
           mensaje,
-          style: const TextStyle(fontFamily: 'Merriweather'),
+          style: const TextStyle(fontFamily: 'Montserrat'),
         ),
         backgroundColor: const Color(0xFFC62828),
         behavior: SnackBarBehavior.floating,
@@ -209,7 +209,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
       SnackBar(
         content: Text(
           mensaje,
-          style: const TextStyle(fontFamily: 'Merriweather'),
+          style: const TextStyle(fontFamily: 'Montserrat'),
         ),
         backgroundColor: const Color(0xFF2E7D32),
         behavior: SnackBarBehavior.floating,
@@ -223,16 +223,31 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildTopSection(size),
-            Transform.translate(
-              offset: const Offset(0, -50),
-              child: _buildFormSection(size),
-            ),
-          ],
+      backgroundColor: const Color(0xFFF1E9F8),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            children: [
+              _buildTopSection(size),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeOut,
+                builder: (context, value, child) => Opacity(
+                  opacity: value,
+                  child: Transform.translate(
+                    offset: Offset(0, 30 * (1.0 - value)),
+                    child: child,
+                  ),
+                ),
+                child: Transform.translate(
+                  offset: const Offset(0, -40),
+                  child: _buildFormSection(size),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -241,17 +256,17 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
   Widget _buildTopSection(Size size) {
     return SizedBox(
       width: size.width,
-      height: size.height * 0.32,
+      height: size.height * 0.30,
       child: Stack(
         children: [
           Container(
             width: size.width,
-            height: size.height * 0.32,
+            height: size.height * 0.30,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFFF1E9F8), Color(0xFFE8D5F5)],
+                colors: [Color(0xFFA98BC3), Color(0xFFE8A0BF)],
               ),
             ),
           ),
@@ -277,7 +292,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
           ),
           // Contenido
           Positioned(
-            top: size.height * 0.10,
+            top: size.height * 0.08,
             left: 30,
             right: 30,
             child: Column(
@@ -309,11 +324,20 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                 const Text(
                   'Recuperar\nContraseña',
                   style: TextStyle(
-                    fontFamily: 'Merriweather',
-                    fontSize: 28,
+                    fontFamily: 'Montserrat',
+                    fontSize: 26,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF6B2D8B),
+                    color: Colors.white,
                     height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Te ayudaremos a restablecer tu acceso\npaso a paso.',
+                  style: TextStyle(
+                    fontFamily: 'Merriweather',
+                    fontSize: 12,
+                    color: Colors.white.withValues(alpha: 0.85),
                   ),
                 ),
               ],
@@ -328,12 +352,16 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 30),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(40),
-          topRight: Radius.circular(40),
-        ),
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,7 +452,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                       child: Text(
                         'Código de desarrollo: $_codigoDebug',
                         style: const TextStyle(
-                          fontFamily: 'Merriweather',
+                          fontFamily: 'Montserrat',
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFFE65100),
@@ -514,7 +542,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                     : Text(
                         _codigoEnviado ? 'Cambiar Contraseña' : 'Enviar Código',
                         style: const TextStyle(
-                          fontFamily: 'Merriweather',
+                          fontFamily: 'Montserrat',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -542,7 +570,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                 child: const Text(
                   '← Cambiar correo o reenviar código',
                   style: TextStyle(
-                    fontFamily: 'Merriweather',
+                    fontFamily: 'Montserrat',
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: Color(0xFF6B2D8B),
@@ -612,11 +640,11 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
         obscureText: obscure,
         keyboardType: keyboardType,
         maxLength: maxLength,
-        style: const TextStyle(fontFamily: 'Merriweather', fontSize: 14),
+        style: const TextStyle(fontFamily: 'Montserrat', fontSize: 14),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(
-            fontFamily: 'Merriweather',
+            fontFamily: 'Montserrat',
             color: Colors.grey[400],
           ),
           prefixIcon: Icon(icon, color: const Color(0xFFA98BC3)),

@@ -124,7 +124,7 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
         data['wifi_valido'] = wifi_valido
         data['red_autorizada'] = red_autorizada
 
-        # Si no hay red Wi-Fi válida, rechazar
+ 
         if not wifi_valido:
             if not ssid and not bssid:
                 raise serializers.ValidationError(

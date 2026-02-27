@@ -52,7 +52,8 @@ class RegistrarAsistenciaView(APIView):
                 f'Estás fuera del perímetro. '
                 f'Distancia: {asistencia.distancia_metros}m '
                 f'(máximo permitido: {asistencia.perimetro.radio_metros}m). '
-                f'Se registró como INVÁLIDA.'
+                f'GPS recibido: {asistencia.latitud_real}, {asistencia.longitud_real}. '
+                f'Centro del perímetro: {asistencia.perimetro.latitud}, {asistencia.perimetro.longitud}.'
             )
             response_data['estado_horario'] = 'fuera_de_perimetro'
             return Response(response_data, status=status.HTTP_201_CREATED)

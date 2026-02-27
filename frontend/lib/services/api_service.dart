@@ -4,8 +4,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Servicio centralizado para comunicarse con el backend Django.
 class ApiService {
-  // Para emulador Android usa 10.0.2.2, para iOS/desktop usa localhost
-  static const String _baseUrl = 'http://10.0.2.2:8000/api';
+  /// Emulador Android: 10.0.2.2. Celular real: usa la IP de tu PC/Mac en la red WiFi.
+  static const bool _usarCelularReal = false;
+  static const String _ipServidor =
+      '192.168.1.100'; // Cambia por la IP de tu computadora
+  static String get _baseUrl => _usarCelularReal
+      ? 'http://$_ipServidor:8000/api'
+      : 'http://10.0.2.2:8000/api';
 
   static String? _accessToken;
   static String? _refreshToken;
@@ -160,18 +165,23 @@ class ApiService {
   static Future<Map<String, dynamic>> solicitarRecuperacion(
     String correo,
   ) async {
+    final correoNorm = correo.trim().toLowerCase();
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/recuperar/solicitar/'),
       headers: _headers,
-      body: jsonEncode({'correo': correo}),
+      body: jsonEncode({'correo': correoNorm}),
     );
 
     final data = jsonDecode(response.body);
+    // El backend retorna HTTP 200 en ambos casos (correo existe o no)
+    // por seguridad (no revela si el correo está registrado).
+    // Siempre tratamos 200 como éxito y avanzamos al Paso 2.
     if (response.statusCode == 200) {
       return {
         'success': true,
         'mensaje': data['mensaje'],
-        'codigo_debug': data['codigo_debug'], // Solo en desarrollo
+        'codigo_debug':
+            data['codigo_debug'], // Solo en desarrollo (null si correo no existe)
       };
     } else {
       return {
@@ -187,11 +197,12 @@ class ApiService {
     String codigo,
     String nuevaPassword,
   ) async {
+    final correoNorm = correo.trim().toLowerCase();
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/recuperar/confirmar/'),
       headers: _headers,
       body: jsonEncode({
-        'correo': correo,
+        'correo': correoNorm,
         'codigo': codigo,
         'nueva_password': nuevaPassword,
       }),
@@ -253,11 +264,10 @@ class ApiService {
   /// Obtener horarios del maestro autenticado.
   static Future<List<dynamic>> getHorarios() async {
     final response = await _getAuth('/horarios/');
-    if (response != null && response.containsKey('results')) {
+    if (response == null) return [];
+    if (response is List) return response;
+    if (response is Map && response.containsKey('results')) {
       return response['results'] as List;
-    }
-    if (response != null) {
-      return response['results'] ?? [];
     }
     return [];
   }
@@ -271,10 +281,7 @@ class ApiService {
     if (response != null && response is Map<String, dynamic>) {
       return response;
     }
-    return {
-      'entrada_registrada': false,
-      'salida_registrada': false,
-    };
+    return {'entrada_registrada': false, 'salida_registrada': false};
   }
 
   /// Registrar asistencia (entrada o salida) enviando lat/lng + ssid/bssid.
@@ -285,13 +292,17 @@ class ApiService {
     String ssid = '',
     String bssid = '',
   }) async {
+    // Redondear a 6 decimales para evitar el error de validación del DecimalField en Django
+    final latRounded = double.parse(latitud.toStringAsFixed(6));
+    final lngRounded = double.parse(longitud.toStringAsFixed(6));
+
     final response = await http.post(
       Uri.parse('$_baseUrl/asistencia/registrar/'),
       headers: _authHeaders,
       body: jsonEncode({
         'tipo': tipo,
-        'latitud': latitud,
-        'longitud': longitud,
+        'latitud': latRounded,
+        'longitud': lngRounded,
         'ssid': ssid,
         'bssid': bssid,
       }),
@@ -308,6 +319,13 @@ class ApiService {
           mensaje = (error['non_field_errors'] as List).first;
         } else if (error.containsKey('detail')) {
           mensaje = error['detail'];
+        } else if (error.values.isNotEmpty) {
+          final firstError = error.values.first;
+          if (firstError is List && firstError.isNotEmpty) {
+            mensaje = firstError.first.toString();
+          } else {
+            mensaje = firstError.toString();
+          }
         }
       }
       return {'success': false, 'mensaje': mensaje};
@@ -334,10 +352,21 @@ class ApiService {
 
   // ─── INCIDENCIAS ───
 
-  /// Obtener incidencias del maestro.
-  static Future<List<dynamic>> getIncidencias() async {
-    final response = await _getAuth('/asistencia/incidencias/');
-    if (response != null && response.containsKey('results')) {
+  /// Obtener incidencias del maestro (o del equipo si es supervisor).
+  /// Supervisor puede filtrar: ?usuario=1&fecha=2026-02-21
+  static Future<List<dynamic>> getIncidencias({
+    int? usuarioId,
+    String? fecha,
+  }) async {
+    final params = <String>[];
+    if (usuarioId != null) params.add('usuario=$usuarioId');
+    if (fecha != null && fecha.isNotEmpty) params.add('fecha=$fecha');
+    String path = '/asistencia/incidencias/';
+    if (params.isNotEmpty) path += '?${params.join('&')}';
+    final response = await _getAuth(path);
+    if (response == null) return [];
+    if (response is List) return response;
+    if (response is Map && response.containsKey('results')) {
       return response['results'] as List;
     }
     return [];
@@ -354,6 +383,222 @@ class ApiService {
     return [];
   }
 
+  // ─── ADMIN / SUPERVISIÓN ───
+
+  /// Panel de supervisión: estado de asistencia de hoy por maestro.
+  /// GET /api/asistencia/panel/?fecha=YYYY-MM-DD
+  static Future<Map<String, dynamic>> getPanelSupervision({
+    String? fecha,
+  }) async {
+    String path = '/asistencia/panel/';
+    if (fecha != null && fecha.isNotEmpty) {
+      path += '?fecha=$fecha';
+    }
+    final response = await _getAuth(path);
+    return response is Map<String, dynamic> ? response : {};
+  }
+
+  /// Lista de usuarios (admin). GET /api/usuarios/
+  static Future<List<dynamic>> getUsuarios() async {
+    final response = await _getAuth('/usuarios/');
+    if (response == null) return [];
+    if (response is List) return response;
+    if (response is Map && response.containsKey('results')) {
+      return response['results'] as List;
+    }
+    return [];
+  }
+
+  /// Lista de roles (admin). GET /api/roles/
+  static Future<List<dynamic>> getRoles() async {
+    final response = await _getAuth('/roles/');
+    if (response == null) return [];
+    if (response is List) return response;
+    if (response is Map && response.containsKey('results')) {
+      return response['results'] as List;
+    }
+    return [];
+  }
+
+  /// Crear usuario (admin). POST /api/usuarios/
+  static Future<Map<String, dynamic>> createUsuario({
+    required String nombre,
+    required String correo,
+    required String password,
+    required int rolId,
+    bool activo = true,
+  }) async {
+    final res = await _postAuth('/usuarios/', {
+      'nombre': nombre,
+      'correo': correo,
+      'password': password,
+      'rol': rolId,
+      'activo': activo,
+    });
+    return res ?? {};
+  }
+
+  /// Actualizar usuario (admin). PATCH /api/usuarios/{id}/ (password opcional)
+  static Future<Map<String, dynamic>> updateUsuario(
+    int id, {
+    String? nombre,
+    String? correo,
+    String? password,
+    int? rolId,
+    bool? activo,
+  }) async {
+    final body = <String, dynamic>{};
+    if (nombre != null) body['nombre'] = nombre;
+    if (correo != null) body['correo'] = correo;
+    if (password != null && password.isNotEmpty) body['password'] = password;
+    if (rolId != null) body['rol'] = rolId;
+    if (activo != null) body['activo'] = activo;
+    final res = await _patchAuth('/usuarios/$id/', body);
+    return res ?? {};
+  }
+
+  /// Desactivar usuario (admin). DELETE /api/usuarios/{id}/
+  static Future<Map<String, dynamic>> desactivarUsuario(int id) async {
+    return await _deleteAuth('/usuarios/$id/') ?? {};
+  }
+
+  /// Crear horario (admin). POST /api/horarios/
+  static Future<Map<String, dynamic>> createHorario({
+    required int usuarioId,
+    required int diaSemana,
+    required String horaEntrada,
+    required String horaSalida,
+  }) async {
+    final res = await _postAuth('/horarios/', {
+      'usuario': usuarioId,
+      'dia_semana': diaSemana,
+      'hora_entrada': horaEntrada,
+      'hora_salida': horaSalida,
+    });
+    return res ?? {};
+  }
+
+  /// Actualizar horario (admin). PATCH /api/horarios/{id}/
+  static Future<Map<String, dynamic>> updateHorario(
+    int id, {
+    int? usuarioId,
+    int? diaSemana,
+    String? horaEntrada,
+    String? horaSalida,
+  }) async {
+    final body = <String, dynamic>{};
+    if (usuarioId != null) body['usuario'] = usuarioId;
+    if (diaSemana != null) body['dia_semana'] = diaSemana;
+    if (horaEntrada != null) body['hora_entrada'] = horaEntrada;
+    if (horaSalida != null) body['hora_salida'] = horaSalida;
+    final res = await _patchAuth('/horarios/$id/', body);
+    return res ?? {};
+  }
+
+  /// Eliminar horario (admin). DELETE /api/horarios/{id}/
+  static Future<bool> deleteHorario(int id) async {
+    final res = await _deleteAuth('/horarios/$id/');
+    return res != null;
+  }
+
+  /// Lista de maestros (supervisor/admin). GET /api/usuarios/maestros/
+  static Future<List<dynamic>> getMaestros() async {
+    final response = await _getAuth('/usuarios/maestros/');
+    if (response == null) return [];
+    if (response is List) return response;
+    return [];
+  }
+
+  /// Registros de asistencia del equipo (supervisor/admin).
+  /// GET /api/asistencia/registros/?usuario=1&fecha_inicio=...&fecha_fin=...
+  static Future<List<dynamic>> getRegistrosEquipo({
+    int? usuarioId,
+    String? fechaInicio,
+    String? fechaFin,
+  }) async {
+    final params = <String>[];
+    if (usuarioId != null) params.add('usuario=$usuarioId');
+    if (fechaInicio != null) params.add('fecha_inicio=$fechaInicio');
+    if (fechaFin != null) params.add('fecha_fin=$fechaFin');
+    String path = '/asistencia/registros/';
+    if (params.isNotEmpty) path += '?${params.join('&')}';
+    final response = await _getAuth(path);
+    if (response == null) return [];
+    if (response is List) return response;
+    if (response is Map && response.containsKey('results')) {
+      return response['results'] as List;
+    }
+    return [];
+  }
+
+  /// Lista de perímetros (admin). GET /api/asistencia/perimetros/
+  static Future<List<dynamic>> getPerimetros() async {
+    final response = await _getAuth('/asistencia/perimetros/');
+    if (response != null &&
+        response is Map &&
+        response.containsKey('results')) {
+      return response['results'] as List;
+    }
+    if (response is List) return response;
+    return [];
+  }
+
+  /// Actualiza un perímetro existente. PATCH /api/asistencia/perimetros/{id}/
+  static Future<Map<String, dynamic>?> updatePerimetro(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    final result = await _patchAuth('/asistencia/perimetros/$id/', data);
+    if (result is Map<String, dynamic>) return result;
+    return null;
+  }
+
+  /// Crea un perímetro nuevo. POST /api/asistencia/perimetros/
+  static Future<Map<String, dynamic>?> createPerimetro(
+    Map<String, dynamic> data,
+  ) async {
+    final result = await _postAuth('/asistencia/perimetros/', data);
+    if (result is Map<String, dynamic>) return result;
+    return null;
+  }
+
+  /// Lista de redes WiFi autorizadas. GET /api/asistencia/redes/
+  static Future<List<dynamic>> getRedes() async {
+    final response = await _getAuth('/asistencia/redes/');
+    if (response != null &&
+        response is Map &&
+        response.containsKey('results')) {
+      return response['results'] as List;
+    }
+    if (response is List) return response;
+    return [];
+  }
+
+  /// Crea una red autorizada. POST /api/asistencia/redes/
+  static Future<Map<String, dynamic>?> createRed(
+    Map<String, dynamic> data,
+  ) async {
+    final result = await _postAuth('/asistencia/redes/', data);
+    if (result is Map<String, dynamic>) return result;
+    return null;
+  }
+
+  /// Actualiza una red autorizada. PATCH /api/asistencia/redes/{id}/
+  static Future<Map<String, dynamic>?> updateRed(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    final result = await _patchAuth('/asistencia/redes/$id/', data);
+    if (result is Map<String, dynamic>) return result;
+    return null;
+  }
+
+  /// Elimina una red autorizada. DELETE /api/asistencia/redes/{id}/
+  static Future<bool> deleteRed(int id) async {
+    final result = await _deleteAuth('/asistencia/redes/$id/');
+    return result != null;
+  }
+
   // ─── HELPERS ───
 
   /// GET autenticado con manejo de refresh automático.
@@ -363,7 +608,6 @@ class ApiService {
       headers: _authHeaders,
     );
 
-    // Si el token expiró, intentar refresh
     if (response.statusCode == 401) {
       final refreshed = await refreshAccessToken();
       if (refreshed) {
@@ -376,6 +620,92 @@ class ApiService {
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
+    }
+    return null;
+  }
+
+  static Future<dynamic> _postAuth(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    var response = await http.post(
+      Uri.parse('$_baseUrl$path'),
+      headers: _authHeaders,
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 401) {
+      final refreshed = await refreshAccessToken();
+      if (refreshed) {
+        response = await http.post(
+          Uri.parse('$_baseUrl$path'),
+          headers: _authHeaders,
+          body: jsonEncode(body),
+        );
+      }
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return jsonDecode(response.body);
+    }
+    if (response.body.isNotEmpty) {
+      try {
+        return jsonDecode(response.body);
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  static Future<dynamic> _patchAuth(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    var response = await http.patch(
+      Uri.parse('$_baseUrl$path'),
+      headers: _authHeaders,
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 401) {
+      final refreshed = await refreshAccessToken();
+      if (refreshed) {
+        response = await http.patch(
+          Uri.parse('$_baseUrl$path'),
+          headers: _authHeaders,
+          body: jsonEncode(body),
+        );
+      }
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return jsonDecode(response.body);
+    }
+    if (response.body.isNotEmpty) {
+      try {
+        return jsonDecode(response.body);
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  static Future<dynamic> _deleteAuth(String path) async {
+    var response = await http.delete(
+      Uri.parse('$_baseUrl$path'),
+      headers: _authHeaders,
+    );
+
+    if (response.statusCode == 401) {
+      final refreshed = await refreshAccessToken();
+      if (refreshed) {
+        response = await http.delete(
+          Uri.parse('$_baseUrl$path'),
+          headers: _authHeaders,
+        );
+      }
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return response.body.isEmpty ? {} : jsonDecode(response.body);
     }
     return null;
   }

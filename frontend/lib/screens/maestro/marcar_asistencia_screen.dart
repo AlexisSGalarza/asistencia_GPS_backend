@@ -31,10 +31,11 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
   bool _cargandoUbicacion = true;
   String? _errorUbicacion;
   final MapController _mapController = MapController();
+  bool _mapaListo = false; // controla si el mapa ya fue construido
 
-  // Perímetro del campus (se cargará del backend)
-  final LatLng _centroCampus = const LatLng(20.659698, -103.349609);
-  final double _radioPerimetro = 100.0; // metros
+  // Perímetro del campus (se carga del backend)
+  LatLng? _centroCampus;
+  double _radioPerimetro = 100.0; // metros, fallback
 
   // WiFi
   String _wifiSSID = '';
@@ -51,9 +52,46 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       _actualizarReloj();
     });
+    _cargarPerimetro();
     _obtenerUbicacion();
     _cargarEstadoHoy();
     _cargarRedesYDetectarWifi();
+  }
+
+  /// Carga el perímetro activo desde el backend.
+  Future<void> _cargarPerimetro() async {
+    try {
+      final perimetros = await ApiService.getPerimetros();
+      if (!mounted) return;
+      // Buscar el primer perímetro activo
+      final activos = perimetros.where((p) => p['activo'] == true).toList();
+      if (activos.isNotEmpty) {
+        final p = activos.first;
+        final lat = double.tryParse(p['latitud'].toString()) ?? 0.0;
+        final lng = double.tryParse(p['longitud'].toString()) ?? 0.0;
+        final radio = (p['radio_metros'] as num?)?.toDouble() ?? 100.0;
+
+        if (lat != 0.0 && lng != 0.0) {
+          setState(() {
+            _centroCampus = LatLng(lat, lng);
+            _radioPerimetro = radio;
+
+            // Recalcular distancia si ya tenemos ubicación
+            if (_ubicacionActual != null) {
+              final distancia = const Distance().as(
+                LengthUnit.Meter,
+                _ubicacionActual!,
+                _centroCampus!,
+              );
+              _dentroDelPerimetro =
+                  distancia <= (_radioPerimetro + 35); // Tolerancia de 35m
+            }
+          });
+        }
+      }
+    } catch (_) {
+      // Ignorar errores, mantendrá los valores por defecto o el último conocido
+    }
   }
 
   /// Carga las redes autorizadas y luego detecta la WiFi actual.
@@ -228,35 +266,52 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
       }
 
       // Obtener posición actual con timeout
-      Position position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 5,
-        ),
-      ).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw TimeoutException('Tiempo de espera agotado'),
-      );
+      Position position =
+          await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              distanceFilter: 5,
+            ),
+          ).timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => throw TimeoutException('Tiempo de espera agotado'),
+          );
 
       if (!mounted) return;
 
       final nuevaUbicacion = LatLng(position.latitude, position.longitude);
 
-      // Calcular si está dentro del perímetro
-      final distancia = const Distance().as(
-        LengthUnit.Meter,
-        nuevaUbicacion,
-        _centroCampus,
-      );
+      // Imprimir coordenadas en la consola para depuración
+      print('=== COORDENADAS GPS OBTENIDAS ===');
+      print('Latitud: ${nuevaUbicacion.latitude}');
+      print('Longitud: ${nuevaUbicacion.longitude}');
+      print('=================================');
+
+      // Calcular si está dentro del perímetro (si ya se cargó)
+      double distancia = 0;
+      bool dentro =
+          true; // Por defecto asumimos verdadero hasta que se cargue el centro
+      if (_centroCampus != null) {
+        distancia = const Distance().as(
+          LengthUnit.Meter,
+          nuevaUbicacion,
+          _centroCampus!,
+        );
+        dentro =
+            distancia <= (_radioPerimetro + 35); // 35m de tolerancia visual
+      }
 
       setState(() {
         _ubicacionActual = nuevaUbicacion;
         _cargandoUbicacion = false;
-        _dentroDelPerimetro = distancia <= _radioPerimetro;
+        // Agregamos 30m de tolerancia al igual que en el backend
+        _dentroDelPerimetro = dentro;
       });
 
-      // Centrar mapa en la ubicación
-      _mapController.move(nuevaUbicacion, 17.0);
+      // Centrar mapa solo cuando ya está construido
+      if (_mapaListo) {
+        _mapController.move(nuevaUbicacion, 17.0);
+      }
     } on TimeoutException {
       if (!mounted) return;
       setState(() {
@@ -267,16 +322,27 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
       if (!mounted) return;
       setState(() {
         _cargandoUbicacion = false;
-        _errorUbicacion = 'Error al obtener ubicación. Revisa que el GPS esté activo';
+        _errorUbicacion =
+            'Error al obtener ubicación. Revisa que el GPS esté activo';
       });
     }
   }
 
   /// Registra asistencia llamando al backend.
   Future<void> _registrarAsistencia(String tipo) async {
-    // Usar coordenadas reales del GPS
-    final double lat = _ubicacionActual?.latitude ?? 20.659698;
-    final double lng = _ubicacionActual?.longitude ?? -103.349609;
+    if (_ubicacionActual == null) {
+      _mostrarAlerta(
+        titulo: 'Ubicación pendiente',
+        mensaje:
+            'Aún obteniendo señal GPS. Espera unos segundos y vuelve a intentar.',
+        color: const Color(0xFFC62828),
+        icono: Icons.location_searching,
+      );
+      return;
+    }
+
+    final double lat = _ubicacionActual!.latitude;
+    final double lng = _ubicacionActual!.longitude;
 
     try {
       final result = await ApiService.registrarAsistencia(
@@ -290,13 +356,14 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
       if (!mounted) return;
 
       if (result['success'] == true) {
-        final data = result['data'];
+        final data = result['data'] ?? {};
         final valido = data['valido'] == true;
         final estadoHorario = data['estado_horario'] ?? '';
+
         setState(() {
-          if (tipo == 'entrada') {
+          if (tipo == 'entrada' && valido) {
             _entradaRegistrada = true;
-          } else {
+          } else if (valido) {
             _salidaRegistrada = true;
           }
           _dentroDelPerimetro = valido;
@@ -338,11 +405,12 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
           icono: alertIcon,
         );
       } else {
+        // En caso de error de perimetro el backend manda 400 y cae aquí directamente
         _mostrarAlerta(
-          titulo: 'Error',
+          titulo: 'Fuera del perímetro',
           mensaje: result['mensaje'] ?? 'No se pudo registrar',
           color: const Color(0xFFC62828),
-          icono: Icons.error,
+          icono: Icons.cancel,
         );
       }
     } catch (e) {
@@ -364,6 +432,7 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
       backgroundColor: const Color(0xFFF1E9F8),
       body: SafeArea(
         child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           child: Column(
             children: [
               _buildHeader(size),
@@ -400,7 +469,7 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
                 Text(
                   'Hello!',
                   style: TextStyle(
-                    fontFamily: 'Merriweather',
+                    fontFamily: 'Montserrat',
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF6B2D8B),
@@ -451,9 +520,6 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
 
   // ---------- Mapa real con OpenStreetMap ----------
   Widget _buildMapaBlob(Size size) {
-    final LatLng centro =
-        _ubicacionActual ?? _centroCampus;
-
     return Center(
       child: SizedBox(
         width: size.width * 0.88,
@@ -477,7 +543,7 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
                         Text(
                           'Obteniendo ubicación...',
                           style: TextStyle(
-                            fontFamily: 'Merriweather',
+                            fontFamily: 'Montserrat',
                             fontSize: 13,
                             color: Color(0xFF6B2D8B),
                           ),
@@ -515,7 +581,7 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
                           label: const Text(
                             'Reintentar',
                             style: TextStyle(
-                              fontFamily: 'Merriweather',
+                              fontFamily: 'Montserrat',
                               fontSize: 12,
                             ),
                           ),
@@ -535,11 +601,23 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
                 FlutterMap(
                   mapController: _mapController,
                   options: MapOptions(
-                    initialCenter: centro,
+                    initialCenter:
+                        _centroCampus ??
+                        const LatLng(
+                          25.725394,
+                          -100.313405,
+                        ), // Monterrey default UI
                     initialZoom: 17.0,
                     interactionOptions: const InteractionOptions(
                       flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                     ),
+                    onMapReady: () {
+                      // El mapa ya está listo: podemos usar el controller con seguridad
+                      setState(() => _mapaListo = true);
+                      if (_ubicacionActual != null) {
+                        _mapController.move(_ubicacionActual!, 17.0);
+                      }
+                    },
                   ),
                   children: [
                     TileLayer(
@@ -550,20 +628,23 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
                     // Círculo del perímetro
                     CircleLayer(
                       circles: [
-                        CircleMarker(
-                          point: _centroCampus,
-                          radius: _radioPerimetro,
-                          useRadiusInMeter: true,
-                          color: _dentroDelPerimetro
-                              ? const Color(0xFF2E7D32)
-                                  .withValues(alpha: 0.15)
-                              : const Color(0xFFC62828)
-                                  .withValues(alpha: 0.15),
-                          borderColor: _dentroDelPerimetro
-                              ? const Color(0xFF2E7D32)
-                              : const Color(0xFFC62828),
-                          borderStrokeWidth: 2,
-                        ),
+                        if (_centroCampus != null)
+                          CircleMarker(
+                            point: _centroCampus!,
+                            radius: _radioPerimetro,
+                            useRadiusInMeter: true,
+                            color: _dentroDelPerimetro
+                                ? const Color(
+                                    0xFF2E7D32,
+                                  ).withValues(alpha: 0.15)
+                                : const Color(
+                                    0xFFC62828,
+                                  ).withValues(alpha: 0.15),
+                            borderColor: _dentroDelPerimetro
+                                ? const Color(0xFF2E7D32)
+                                : const Color(0xFFC62828),
+                            borderStrokeWidth: 2,
+                          ),
                       ],
                     ),
                     // Marcador del usuario
@@ -584,8 +665,9 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFF6B2D8B)
-                                        .withValues(alpha: 0.4),
+                                    color: const Color(
+                                      0xFF6B2D8B,
+                                    ).withValues(alpha: 0.4),
                                     blurRadius: 8,
                                     offset: const Offset(0, 3),
                                   ),
@@ -599,26 +681,27 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
                             ),
                           ),
                           // Marcador del centro del campus
-                          Marker(
-                            point: _centroCampus,
-                            width: 30,
-                            height: 30,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE8A0BF),
-                                shape: BoxShape.circle,
-                                border: Border.all(
+                          if (_centroCampus != null)
+                            Marker(
+                              point: _centroCampus!,
+                              width: 30,
+                              height: 30,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE8A0BF),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.school,
                                   color: Colors.white,
-                                  width: 2,
+                                  size: 16,
                                 ),
                               ),
-                              child: const Icon(
-                                Icons.school,
-                                color: Colors.white,
-                                size: 16,
-                              ),
                             ),
-                          ),
                         ],
                       ),
                   ],
@@ -791,11 +874,7 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
               ),
             ),
             if (!_cargandoWifi)
-              Icon(
-                Icons.refresh,
-                color: Colors.grey[400],
-                size: 18,
-              ),
+              Icon(Icons.refresh, color: Colors.grey[400], size: 18),
           ],
         ),
       ),
@@ -808,7 +887,11 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
     Color color;
     IconData icono;
 
-    if (!_dentroDelPerimetro) {
+    if (_ubicacionActual == null || _centroCampus == null) {
+      texto = 'Calculando ubicación...';
+      color = const Color(0xFF757575);
+      icono = Icons.location_searching;
+    } else if (!_dentroDelPerimetro) {
       texto = 'Fuera del perímetro';
       color = const Color(0xFFC62828);
       icono = Icons.cancel;
@@ -865,11 +948,15 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
 
   // ---------- Botones de registro ----------
   Widget _buildBotones(Size size) {
-    // Entrada activa si: está dentro del perímetro Y WiFi autorizada Y no ha registrado entrada
-    final bool entradaActiva = _dentroDelPerimetro && _wifiAutorizada && !_entradaRegistrada;
-    // Salida activa si: está dentro del perímetro Y WiFi autorizada Y ya registró entrada Y no ha registrado salida
+    // Entrada activa si: tiene ubicación Y WiFi autorizada Y no ha registrado entrada
+    final bool entradaActiva =
+        _ubicacionActual != null && _wifiAutorizada && !_entradaRegistrada;
+    // Salida activa si: tiene ubicación Y WiFi autorizada Y ya registró entrada Y no ha registrado salida
     final bool salidaActiva =
-        _dentroDelPerimetro && _wifiAutorizada && _entradaRegistrada && !_salidaRegistrada;
+        _ubicacionActual != null &&
+        _wifiAutorizada &&
+        _entradaRegistrada &&
+        !_salidaRegistrada;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 30),
@@ -1072,7 +1159,11 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
             CircleAvatar(
               backgroundColor: const Color(0xFFC62828).withValues(alpha: 0.15),
               radius: 35,
-              child: const Icon(Icons.logout, color: Color(0xFFC62828), size: 35),
+              child: const Icon(
+                Icons.logout,
+                color: Color(0xFFC62828),
+                size: 35,
+              ),
             ),
             const SizedBox(height: 18),
             const Text(

@@ -29,10 +29,17 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (sesionActiva) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MarcarAsistenciaScreen()),
-      );
+      final rol = ApiService.rolUsuario.toLowerCase();
+      if (rol == 'administrador' || rol == 'admin') {
+        Navigator.pushReplacementNamed(context, '/admin/dashboard');
+      } else if (rol == 'supervisor') {
+        Navigator.pushReplacementNamed(context, '/supervisor/incidencias');
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MarcarAsistenciaScreen()),
+        );
+      }
     } else {
       Navigator.pushReplacement(
         context,
@@ -69,7 +76,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 // Si ya tienes logo.png en assets/images/, usa Image.asset
                 // Si no, muestra un ícono temporal
                 child: Image.asset(
-                  'assets/images/logo.png',
+                  'assets/images/Logo.png',
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     // Ícono temporal mientras no tengas el logo

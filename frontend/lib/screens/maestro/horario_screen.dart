@@ -64,8 +64,13 @@ class _HorarioScreenState extends State<HorarioScreen> {
 
   Widget _buildHeader() {
     final diasNombres = [
-      'Lunes', 'Martes', 'Miércoles', 'Jueves',
-      'Viernes', 'Sábado', 'Domingo',
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+      'Domingo',
     ];
     final hoy = diasNombres[DateTime.now().weekday - 1];
 
@@ -123,7 +128,7 @@ class _HorarioScreenState extends State<HorarioScreen> {
                     Text(
                       'Mi Horario',
                       style: TextStyle(
-                        fontFamily: 'Merriweather',
+                        fontFamily: 'Montserrat',
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -164,7 +169,7 @@ class _HorarioScreenState extends State<HorarioScreen> {
                   Text(
                     'Hoy ($hoy)',
                     style: const TextStyle(
-                      fontFamily: 'Merriweather',
+                      fontFamily: 'Montserrat',
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -201,13 +206,16 @@ class _HorarioScreenState extends State<HorarioScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.event_busy, size: 60,
-                color: const Color(0xFF6B2D8B).withValues(alpha: 0.4)),
+            Icon(
+              Icons.event_busy,
+              size: 60,
+              color: const Color(0xFF6B2D8B).withValues(alpha: 0.4),
+            ),
             const SizedBox(height: 15),
             const Text(
               'No hay horarios asignados',
               style: TextStyle(
-                fontFamily: 'Merriweather',
+                fontFamily: 'Montserrat',
                 fontSize: 16,
                 color: Color(0xFF757575),
               ),
@@ -218,14 +226,24 @@ class _HorarioScreenState extends State<HorarioScreen> {
     }
 
     final diasNombres = [
-      'Lunes', 'Martes', 'Miércoles', 'Jueves',
-      'Viernes', 'Sábado', 'Domingo',
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+      'Domingo',
     ];
     final hoy = diasNombres[DateTime.now().weekday - 1];
 
     final diasAbrev = {
-      'Lunes': 'LUN', 'Martes': 'MAR', 'Miércoles': 'MIÉ',
-      'Jueves': 'JUE', 'Viernes': 'VIE', 'Sábado': 'SÁB', 'Domingo': 'DOM',
+      'Lunes': 'LUN',
+      'Martes': 'MAR',
+      'Miércoles': 'MIÉ',
+      'Jueves': 'JUE',
+      'Viernes': 'VIE',
+      'Sábado': 'SÁB',
+      'Domingo': 'DOM',
     };
 
     return ListView.builder(
@@ -278,9 +296,10 @@ class _HorarioScreenState extends State<HorarioScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        diasAbrev[dia['dia']] ?? dia['dia']!.substring(0, 3).toUpperCase(),
+                        diasAbrev[dia['dia']] ??
+                            dia['dia']!.substring(0, 3).toUpperCase(),
                         style: TextStyle(
-                          fontFamily: 'Merriweather',
+                          fontFamily: 'Montserrat',
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: esHoy ? Colors.white : const Color(0xFF6B2D8B),
@@ -300,7 +319,7 @@ class _HorarioScreenState extends State<HorarioScreen> {
                           Text(
                             dia['dia']!,
                             style: TextStyle(
-                              fontFamily: 'Merriweather',
+                              fontFamily: 'Montserrat',
                               fontSize: 15,
                               fontWeight: esHoy
                                   ? FontWeight.bold
@@ -314,18 +333,22 @@ class _HorarioScreenState extends State<HorarioScreen> {
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3,
+                                horizontal: 8,
+                                vertical: 3,
                               ),
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
-                                  colors: [Color(0xFFA98BC3), Color(0xFFE8A0BF)],
+                                  colors: [
+                                    Color(0xFFA98BC3),
+                                    Color(0xFFE8A0BF),
+                                  ],
                                 ),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Text(
                                 'HOY',
                                 style: TextStyle(
-                                  fontFamily: 'Merriweather',
+                                  fontFamily: 'Montserrat',
                                   fontSize: 9,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
@@ -347,7 +370,7 @@ class _HorarioScreenState extends State<HorarioScreen> {
                           Text(
                             '${dia['entrada']} - ${dia['salida']}',
                             style: TextStyle(
-                              fontFamily: 'Merriweather',
+                              fontFamily: 'Montserrat',
                               fontSize: 12,
                               color: Colors.grey[500],
                             ),
@@ -397,7 +420,7 @@ class _HorarioScreenState extends State<HorarioScreen> {
           Text(
             time,
             style: TextStyle(
-              fontFamily: 'Merriweather',
+              fontFamily: 'Montserrat',
               fontSize: 12,
               fontWeight: FontWeight.bold,
               color: color,
@@ -421,13 +444,17 @@ class _HorarioScreenState extends State<HorarioScreen> {
             CircleAvatar(
               backgroundColor: const Color(0xFFC62828).withValues(alpha: 0.15),
               radius: 35,
-              child: const Icon(Icons.logout, color: Color(0xFFC62828), size: 35),
+              child: const Icon(
+                Icons.logout,
+                color: Color(0xFFC62828),
+                size: 35,
+              ),
             ),
             const SizedBox(height: 18),
             const Text(
               '¿Cerrar sesión?',
               style: TextStyle(
-                fontFamily: 'Merriweather',
+                fontFamily: 'Montserrat',
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF3D3D3D),
@@ -438,7 +465,7 @@ class _HorarioScreenState extends State<HorarioScreen> {
               '¿Estás seguro de que deseas cerrar tu sesión?',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'Merriweather',
+                fontFamily: 'Montserrat',
                 fontSize: 13,
                 color: Color(0xFF757575),
               ),
@@ -461,7 +488,7 @@ class _HorarioScreenState extends State<HorarioScreen> {
                   child: const Text(
                     'Cancelar',
                     style: TextStyle(
-                      fontFamily: 'Merriweather',
+                      fontFamily: 'Montserrat',
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF6B2D8B),
@@ -491,7 +518,7 @@ class _HorarioScreenState extends State<HorarioScreen> {
                   child: const Text(
                     'Salir',
                     style: TextStyle(
-                      fontFamily: 'Merriweather',
+                      fontFamily: 'Montserrat',
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -556,12 +583,12 @@ class _HorarioScreenState extends State<HorarioScreen> {
           selectedItemColor: const Color(0xFF6B2D8B),
           unselectedItemColor: Colors.grey,
           selectedLabelStyle: const TextStyle(
-            fontFamily: 'Merriweather',
+            fontFamily: 'Montserrat',
             fontSize: 11,
             fontWeight: FontWeight.bold,
           ),
           unselectedLabelStyle: const TextStyle(
-            fontFamily: 'Merriweather',
+            fontFamily: 'Montserrat',
             fontSize: 10,
           ),
           items: const [
