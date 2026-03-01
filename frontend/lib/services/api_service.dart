@@ -5,13 +5,28 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Servicio centralizado para comunicarse con el backend Django.
 class ApiService {
-  /// Emulador Android: 10.0.2.2. Celular real: usa la IP de tu PC/Mac en la red WiFi.
-  static const bool _usarCelularReal = false;
-  static const String _ipServidor =
-      '192.168.1.100'; // Cambia por la IP de tu computadora
-  static String get _baseUrl => _usarCelularReal
-      ? 'http://$_ipServidor:8000/api'
-      : 'http://10.0.2.2:8000/api';
+  // ─────────────────────────────────────────
+  // 🔧 CONFIGURACIÓN DE ENTORNO
+  // Cambia _entorno según donde quieras conectarte:
+  //   Entorno.emulador  → Android Studio emulator (10.0.2.2)
+  //   Entorno.local     → Celular real en tu red WiFi
+  //   Entorno.railway   → Servidor en producción
+  // ─────────────────────────────────────────
+  static const _Entorno _entorno = _Entorno.emulador;
+
+  static const String _ipLocal = '192.168.1.100'; // Tu IP en la red WiFi
+  static const String _urlRailway = 'https://tu-app.railway.app'; // URL de Railway
+
+  static String get _baseUrl {
+    switch (_entorno) {
+      case _Entorno.emulador:
+        return 'http://10.0.2.2:8000/api';
+      case _Entorno.local:
+        return 'http://$_ipLocal:8000/api';
+      case _Entorno.railway:
+        return '$_urlRailway/api';
+    }
+  }
 
   static String? _accessToken;
   static String? _refreshToken;
@@ -750,3 +765,5 @@ class ApiService {
     return null;
   }
 }
+
+enum _Entorno { emulador, local, railway }
