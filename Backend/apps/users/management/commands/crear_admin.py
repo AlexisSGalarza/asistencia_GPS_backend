@@ -1,44 +1,44 @@
 """
 Management command para crear el usuario administrador inicial.
 
-Uso local:
-    python manage.py crear_admin
+Lee las credenciales SOLO desde variables de entorno — nunca desde código.
 
-En Railway (pestaña Deployments → tres puntitos → "Railway Shell"):
-    python manage.py crear_admin
+En Railway: configura estas variables primero en la pestaña "Variables":
+    ADMIN_NOMBRE  → ej. "Alexis Galarza"
+    ADMIN_EMAIL   → ej. "admin@escuela.com"
+    ADMIN_PASSWORD → ej. "MiClaveSegura123!"
 
-Puedes personalizar nombre, correo y contraseña con argumentos:
-    python manage.py crear_admin --nombre "Admin" --correo "admin@escuela.com" --password "MiClave123"
+Luego abre el Railway Shell y ejecuta:
+    python manage.py crear_admin
 
 Si ya existe un usuario con ese correo, el comando solo avisa y NO duplica.
 """
 
 import os
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from apps.users.models import Rol, Usuario
 
 
 class Command(BaseCommand):
-    help = 'Crea los roles del sistema y el primer usuario administrador.'
-
-    def add_arguments(self, parser):
-        parser.add_argument(
-            '--nombre',
-            default='Administrador',
-            help='Nombre del administrador (default: Administrador)',
-        )
-        parser.add_argument(
-            '--correo',
-            default=os.environ.get('ADMIN_EMAIL', 'admin@escuela.com'),
-            help='Correo del administrador (default: ADMIN_EMAIL o admin@escuela.com)',
-        )
-        parser.add_argument(
-            '--password',
-            default=os.environ.get('ADMIN_PASSWORD', 'Admin1234!'),
-            help='Contraseña del administrador (default: ADMIN_PASSWORD o Admin1234!)',
-        )
+    help = 'Crea los roles del sistema y el primer usuario administrador usando variables de entorno.'
 
     def handle(self, *args, **options):
+        # Leer credenciales SOLO de variables de entorno (nunca hardcodeadas)
+        nombre = os.environ.get('ADMIN_NOMBRE', 'Administrador')
+        correo = os.environ.get('ADMIN_EMAIL')
+        password = os.environ.get('ADMIN_PASSWORD')
+
+        if not correo:
+            raise CommandError(
+                'Falta la variable de entorno ADMIN_EMAIL. '
+                'Configúrala en Railway → Variables antes de ejecutar este comando.'
+            )
+        if not password:
+            raise CommandError(
+                'Falta la variable de entorno ADMIN_PASSWORD. '
+                'Configúrala en Railway → Variables antes de ejecutar este comando.'
+            )
+
         # 1. Crear los tres roles si no existen
         roles_creados = []
         for nombre_rol in [Rol.Nombre.MAESTRO, Rol.Nombre.SUPERVISOR, Rol.Nombre.ADMINISTRADOR]:
@@ -52,10 +52,6 @@ class Command(BaseCommand):
             self.stdout.write('Roles ya existían, sin cambios.')
 
         # 2. Crear el usuario administrador si no existe
-        correo = options['correo']
-        nombre = options['nombre']
-        password = options['password']
-
         if Usuario.objects.filter(correo=correo).exists():
             self.stdout.write(
                 self.style.WARNING(f'Ya existe un usuario con correo "{correo}". No se creó duplicado.')
@@ -75,9 +71,8 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f'\n✓ Administrador creado exitosamente:\n'
-                f'  Nombre  : {nombre}\n'
-                f'  Correo  : {correo}\n'
-                f'  Password: {password}\n'
-                f'\n  ¡Cambia la contraseña después del primer login!'
+                f'  Nombre : {nombre}\n'
+                f'  Correo : {correo}\n'
+                f'\n  Recuerda eliminar ADMIN_PASSWORD de las variables de Railway.'
             )
         )
