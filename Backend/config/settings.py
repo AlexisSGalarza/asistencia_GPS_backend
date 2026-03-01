@@ -73,7 +73,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # ─── Base de datos ───────────────────────────────────────────────────────────────
 # Railway provee DATABASE_URL automáticamente al agregar el plugin de PostgreSQL.
 # En local se usan las variables individuales de claves.env.
-_database_url = env('DATABASE_URL', default=None)
+_database_url = os.environ.get('DATABASE_URL')
 if _database_url:
     DATABASES = {'default': env.db_url_config(_database_url)}
     DATABASES['default']['OPTIONS'] = {'sslmode': 'require'}
