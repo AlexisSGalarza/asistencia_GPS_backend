@@ -4,7 +4,7 @@ Management command para crear el usuario administrador inicial.
 Lee las credenciales SOLO desde variables de entorno — nunca desde código.
 
 En Railway: configura estas variables primero en la pestaña "Variables":
-    ADMIN_NOMBRE  → ej. "Alexis Galarza"
+    ADMIN_NOMBRE  → ej. ""Alexis Galarza
     ADMIN_EMAIL   → ej. "admin@escuela.com"
     ADMIN_PASSWORD → ej. "MiClaveSegura123!"
 
@@ -29,15 +29,19 @@ class Command(BaseCommand):
         password = os.environ.get('ADMIN_PASSWORD')
 
         if not correo:
-            raise CommandError(
-                'Falta la variable de entorno ADMIN_EMAIL. '
-                'Configúrala en Railway → Variables antes de ejecutar este comando.'
+            self.stdout.write(
+                self.style.WARNING(
+                    'Variable ADMIN_EMAIL no configurada — se omite la creación del admin.'
+                )
             )
+            return
         if not password:
-            raise CommandError(
-                'Falta la variable de entorno ADMIN_PASSWORD. '
-                'Configúrala en Railway → Variables antes de ejecutar este comando.'
+            self.stdout.write(
+                self.style.WARNING(
+                    'Variable ADMIN_PASSWORD no configurada — se omite la creación del admin.'
+                )
             )
+            return
 
         # 1. Crear los tres roles si no existen
         roles_creados = []
