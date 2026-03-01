@@ -71,23 +71,32 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # ─── Base de datos ───────────────────────────────────────────────────────────────
-# Railway provee DATABASE_URL automáticamente al agregar el plugin de PostgreSQL.
+# Railway provee DATABASE_URL al conectar el plugin PostgreSQL.
 # En local se usan las variables individuales de claves.env.
 _database_url = os.environ.get('DATABASE_URL')
+_db_name = os.environ.get('DB_NAME')
+
 if _database_url:
-    DATABASES = {'default': env.db_url_config(_database_url)}
-    DATABASES['default']['OPTIONS'] = {'sslmode': 'require'}
-else:
+    # Producción (Railway): usa DATABASE_URL completa
+    import dj_database_url
+    DATABASES = {'default': dj_database_url.config(default=_database_url, conn_max_age=600, ssl_require=True)}
+elif _db_name:
+    # Desarrollo local: usa variables individuales
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': env('DB_NAME'),
-            'USER': env('DB_USER'),
-            'PASSWORD': env('DB_PASSWORD'),
-            'HOST': env('DB_HOST', default='localhost'),
-            'PORT': env('DB_PORT', default='5432'),
+            'NAME': _db_name,
+            'USER': os.environ.get('DB_USER', ''),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
         }
     }
+else:
+    raise Exception(
+        'No se encontró configuración de base de datos. '
+        'Define DATABASE_URL (Railway) o DB_NAME (local).'
+    )
 
 # ─── Validación de contraseñas ──────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [

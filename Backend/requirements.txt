@@ -7,6 +7,7 @@ djangorestframework-simplejwt==5.5.1
 geographiclib==2.1
 geopy==2.4.1
 gunicorn==21.2.0
+dj-database-url==2.3.0
 Pillow>=9.0.0
 psycopg2-binary==2.9.11
 PyJWT==2.8.0
