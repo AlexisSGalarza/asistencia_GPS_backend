@@ -39,8 +39,10 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
       // Agrupar asistencias por fecha
       final Map<String, Map<String, dynamic>> porFecha = {};
       for (final a in historial) {
-        final fechaHora = DateTime.tryParse(a['fecha_hora'] ?? '');
-        if (fechaHora == null) continue;
+        final fechaHoraUtc = DateTime.tryParse(a['fecha_hora'] ?? '');
+        if (fechaHoraUtc == null) continue;
+        // Convertir a hora local del dispositivo (el backend guarda en UTC)
+        final fechaHora = fechaHoraUtc.toLocal();
         final fechaKey =
             '${fechaHora.year}-${fechaHora.month.toString().padLeft(2, '0')}-${fechaHora.day.toString().padLeft(2, '0')}';
 
