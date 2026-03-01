@@ -418,7 +418,7 @@ class _HistorialEquipoScreenState extends State<HistorialEquipoScreen> {
 
   String _formatearFechaHora(dynamic v) {
     if (v == null) return '--:--';
-    final dt = DateTime.tryParse(v.toString())?.toUtc().subtract(const Duration(hours: 6));
+    final dt = DateTime.tryParse(v.toString());
     if (dt == null) return v.toString();
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }

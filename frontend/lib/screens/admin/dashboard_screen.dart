@@ -350,14 +350,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (entrada != null &&
             entrada is Map &&
             entrada['fecha_hora'] != null) {
-          final dt = DateTime.tryParse(entrada['fecha_hora'].toString())?.toUtc().subtract(const Duration(hours: 6));
+          final dt = DateTime.tryParse(entrada['fecha_hora'].toString());
           if (dt != null) {
             entradaStr =
                 '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
           }
         }
         if (salida != null && salida is Map && salida['fecha_hora'] != null) {
-          final dt = DateTime.tryParse(salida['fecha_hora'].toString())?.toUtc().subtract(const Duration(hours: 6));
+          final dt = DateTime.tryParse(salida['fecha_hora'].toString());
           if (dt != null) {
             salidaStr =
                 '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';

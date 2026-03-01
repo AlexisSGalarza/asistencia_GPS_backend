@@ -10,7 +10,8 @@ class VisualizadorReportesScreen extends StatefulWidget {
       _VisualizadorReportesScreenState();
 }
 
-class _VisualizadorReportesScreenState extends State<VisualizadorReportesScreen> {
+class _VisualizadorReportesScreenState
+    extends State<VisualizadorReportesScreen> {
   Map<String, dynamic> _panel = {};
   bool _isLoading = true;
   String? _error;
@@ -66,20 +67,20 @@ class _VisualizadorReportesScreenState extends State<VisualizadorReportesScreen>
                       ),
                     )
                   : _error != null
-                      ? _buildError()
-                      : SingleChildScrollView(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _buildResumenCards(),
-                              const SizedBox(height: 24),
-                              _buildTituloLista(),
-                              const SizedBox(height: 12),
-                              _buildListaMaestros(),
-                            ],
-                          ),
-                        ),
+                  ? _buildError()
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildResumenCards(),
+                          const SizedBox(height: 24),
+                          _buildTituloLista(),
+                          const SizedBox(height: 12),
+                          _buildListaMaestros(),
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),
@@ -111,9 +112,11 @@ class _VisualizadorReportesScreenState extends State<VisualizadorReportesScreen>
       ),
       child: Row(
         children: [
-          Icon(Icons.bar_chart,
-              color: const Color(0xFF6B2D8B),
-              size: width < 400 ? 28 : 36),
+          Icon(
+            Icons.bar_chart,
+            color: const Color(0xFF6B2D8B),
+            size: width < 400 ? 28 : 36,
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Text(
@@ -187,8 +190,7 @@ class _VisualizadorReportesScreenState extends State<VisualizadorReportesScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.cloud_off,
-                size: 48, color: Color(0xFF757575)),
+            const Icon(Icons.cloud_off, size: 48, color: Color(0xFF757575)),
             const SizedBox(height: 16),
             Text(
               _error ?? 'Error',
@@ -227,8 +229,10 @@ class _VisualizadorReportesScreenState extends State<VisualizadorReportesScreen>
       final estado = m['estado'] ?? '';
       if (estado == 'en_turno') {
         enTurno++;
-      } else if (estado == 'turno_completado') completados++;
-      else if (estado == 'sin_registro') sinRegistro++;
+      } else if (estado == 'turno_completado')
+        completados++;
+      else if (estado == 'sin_registro')
+        sinRegistro++;
     }
 
     return Row(
@@ -273,7 +277,11 @@ class _VisualizadorReportesScreenState extends State<VisualizadorReportesScreen>
   }
 
   Widget _buildCardResumen(
-      String label, String valor, IconData icono, Color color) {
+    String label,
+    String valor,
+    IconData icono,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
@@ -388,16 +396,17 @@ class _VisualizadorReportesScreenState extends State<VisualizadorReportesScreen>
         final salida = m['salida'];
         String entradaStr = '--:--';
         String salidaStr = '--:--';
-        if (entrada != null && entrada is Map && entrada['fecha_hora'] != null) {
-          final dt =
-              DateTime.tryParse(entrada['fecha_hora'].toString())?.toUtc().subtract(const Duration(hours: 6));
+        if (entrada != null &&
+            entrada is Map &&
+            entrada['fecha_hora'] != null) {
+          final dt = DateTime.tryParse(entrada['fecha_hora'].toString());
           if (dt != null) {
             entradaStr =
                 '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
           }
         }
         if (salida != null && salida is Map && salida['fecha_hora'] != null) {
-          final dt = DateTime.tryParse(salida['fecha_hora'].toString())?.toUtc().subtract(const Duration(hours: 6));
+          final dt = DateTime.tryParse(salida['fecha_hora'].toString());
           if (dt != null) {
             salidaStr =
                 '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
@@ -478,8 +487,11 @@ class _VisualizadorReportesScreenState extends State<VisualizadorReportesScreen>
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.login,
-                            size: 14, color: Color(0xFF9E9E9E)),
+                        const Icon(
+                          Icons.login,
+                          size: 14,
+                          color: Color(0xFF9E9E9E),
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'E: $entradaStr',
@@ -490,8 +502,11 @@ class _VisualizadorReportesScreenState extends State<VisualizadorReportesScreen>
                           ),
                         ),
                         const SizedBox(width: 12),
-                        const Icon(Icons.logout,
-                            size: 14, color: Color(0xFF9E9E9E)),
+                        const Icon(
+                          Icons.logout,
+                          size: 14,
+                          color: Color(0xFF9E9E9E),
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'S: $salidaStr',
@@ -507,7 +522,10 @@ class _VisualizadorReportesScreenState extends State<VisualizadorReportesScreen>
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: estadoColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(12),

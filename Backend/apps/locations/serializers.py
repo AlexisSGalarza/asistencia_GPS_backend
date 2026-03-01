@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.utils import timezone
 from .models import Perimetro, Asistencia, Incidencia, RedAutorizada
 
 
@@ -25,6 +26,12 @@ class AsistenciaSerializer(serializers.ModelSerializer):
     perimetro_nombre = serializers.CharField(source='perimetro.nombre', read_only=True)
     tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
     red_nombre = serializers.CharField(source='red_autorizada.nombre', read_only=True, default='')
+    fecha_hora = serializers.SerializerMethodField()
+
+    def get_fecha_hora(self, obj):
+        # Convertir a hora México antes de enviar al cliente
+        local_dt = timezone.localtime(obj.fecha_hora)
+        return local_dt.strftime('%Y-%m-%dT%H:%M:%S')
 
     class Meta:
         model = Asistencia
@@ -54,8 +61,6 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
     bssid = serializers.CharField(max_length=17, required=False, default='', allow_blank=True)
 
     def validate(self, data):
-        from django.utils import timezone
-
         # Buscar perímetro activo
         perimetro = Perimetro.objects.filter(activo=True).first()
         if not perimetro:
@@ -64,7 +69,7 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
 
         # Validar máximo una entrada y una salida por día
         usuario = self.context['usuario']
-        hoy = timezone.localtime().date()
+        hoy = timezone.localtime(timezone.now()).date()
         tipo = data['tipo']
 
         ya_existe = Asistencia.objects.filter(

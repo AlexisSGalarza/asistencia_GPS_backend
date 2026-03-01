@@ -39,10 +39,8 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
       // Agrupar asistencias por fecha
       final Map<String, Map<String, dynamic>> porFecha = {};
       for (final a in historial) {
-        final fechaHoraUtc = DateTime.tryParse(a['fecha_hora'] ?? '');
-        if (fechaHoraUtc == null) continue;
-        // Convertir siempre a hora de México (UTC-6, sin horario de verano desde 2023)
-        final fechaHora = fechaHoraUtc.toUtc().subtract(const Duration(hours: 6));
+        final fechaHora = DateTime.tryParse(a['fecha_hora'] ?? '');
+        if (fechaHora == null) continue;
         final fechaKey =
             '${fechaHora.year}-${fechaHora.month.toString().padLeft(2, '0')}-${fechaHora.day.toString().padLeft(2, '0')}';
 
