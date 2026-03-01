@@ -41,8 +41,8 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
       for (final a in historial) {
         final fechaHoraUtc = DateTime.tryParse(a['fecha_hora'] ?? '');
         if (fechaHoraUtc == null) continue;
-        // Convertir a hora local del dispositivo (el backend guarda en UTC)
-        final fechaHora = fechaHoraUtc.toLocal();
+        // Convertir siempre a hora de México (UTC-6, sin horario de verano desde 2023)
+        final fechaHora = fechaHoraUtc.toUtc().subtract(const Duration(hours: 6));
         final fechaKey =
             '${fechaHora.year}-${fechaHora.month.toString().padLeft(2, '0')}-${fechaHora.day.toString().padLeft(2, '0')}';
 

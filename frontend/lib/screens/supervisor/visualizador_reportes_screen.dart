@@ -390,14 +390,14 @@ class _VisualizadorReportesScreenState extends State<VisualizadorReportesScreen>
         String salidaStr = '--:--';
         if (entrada != null && entrada is Map && entrada['fecha_hora'] != null) {
           final dt =
-              DateTime.tryParse(entrada['fecha_hora'].toString());
+              DateTime.tryParse(entrada['fecha_hora'].toString())?.toUtc().subtract(const Duration(hours: 6));
           if (dt != null) {
             entradaStr =
                 '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
           }
         }
         if (salida != null && salida is Map && salida['fecha_hora'] != null) {
-          final dt = DateTime.tryParse(salida['fecha_hora'].toString());
+          final dt = DateTime.tryParse(salida['fecha_hora'].toString())?.toUtc().subtract(const Duration(hours: 6));
           if (dt != null) {
             salidaStr =
                 '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
