@@ -15,7 +15,8 @@ class ApiService {
   static const _Entorno _entorno = _Entorno.emulador;
 
   static const String _ipLocal = '192.168.1.100'; // Tu IP en la red WiFi
-  static const String _urlRailway = 'https://tu-app.railway.app'; // URL de Railway
+  static const String _urlRailway =
+      'https://tu-app.railway.app'; // URL de Railway
 
   static String get _baseUrl {
     switch (_entorno) {
