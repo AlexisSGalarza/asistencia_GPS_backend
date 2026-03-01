@@ -16,7 +16,17 @@ class _GestionIncidenciasScreenState extends State<GestionIncidenciasScreen> {
   bool _isLoading = true;
   String? _error;
   int? _maestroFiltro;
-  String _fechaFiltro = '';
+  String? _tipoFiltro;
+  DateTime? _fechaDesde;
+  DateTime? _fechaHasta;
+
+  static const List<Map<String, String?>> _tipos = [
+    {'value': null, 'label': 'Todos'},
+    {'value': 'falta', 'label': 'Falta'},
+    {'value': 'retardo', 'label': 'Retardo'},
+    {'value': 'salida_temprana', 'label': 'Salida temprana'},
+    {'value': 'justificacion', 'label': 'Justificación'},
+  ];
 
   @override
   void initState() {
@@ -40,7 +50,13 @@ class _GestionIncidenciasScreenState extends State<GestionIncidenciasScreen> {
     try {
       final lista = await ApiService.getIncidencias(
         usuarioId: _maestroFiltro,
-        fecha: _fechaFiltro.isEmpty ? null : _fechaFiltro,
+        fechaInicio: _fechaDesde != null
+            ? '${_fechaDesde!.year}-${_fechaDesde!.month.toString().padLeft(2, '0')}-${_fechaDesde!.day.toString().padLeft(2, '0')}'
+            : null,
+        fechaFin: _fechaHasta != null
+            ? '${_fechaHasta!.year}-${_fechaHasta!.month.toString().padLeft(2, '0')}-${_fechaHasta!.day.toString().padLeft(2, '0')}'
+            : null,
+        tipo: _tipoFiltro,
       );
       if (mounted) {
         setState(() {
@@ -77,21 +93,20 @@ class _GestionIncidenciasScreenState extends State<GestionIncidenciasScreen> {
                       ),
                     )
                   : _error != null
-                      ? _buildError()
-                      : _incidencias.isEmpty
-                          ? _buildEmpty()
-                          : RefreshIndicator(
-                              onRefresh: _cargarIncidencias,
-                              color: const Color(0xFF6B2D8B),
-                              child: ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-                                itemCount: _incidencias.length,
-                                itemBuilder: (context, index) {
-                                  return _buildIncidenciaCard(
-                                      _incidencias[index]);
-                                },
-                              ),
-                            ),
+                  ? _buildError()
+                  : _incidencias.isEmpty
+                  ? _buildEmpty()
+                  : RefreshIndicator(
+                      onRefresh: _cargarIncidencias,
+                      color: const Color(0xFF6B2D8B),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                        itemCount: _incidencias.length,
+                        itemBuilder: (context, index) {
+                          return _buildIncidenciaCard(_incidencias[index]);
+                        },
+                      ),
+                    ),
             ),
           ],
         ),
@@ -123,9 +138,11 @@ class _GestionIncidenciasScreenState extends State<GestionIncidenciasScreen> {
       ),
       child: Row(
         children: [
-          Icon(Icons.warning_amber_rounded,
-              color: const Color(0xFF6B2D8B),
-              size: width < 400 ? 28 : 36),
+          Icon(
+            Icons.warning_amber_rounded,
+            color: const Color(0xFF6B2D8B),
+            size: width < 400 ? 28 : 36,
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Text(
@@ -147,69 +164,161 @@ class _GestionIncidenciasScreenState extends State<GestionIncidenciasScreen> {
 
   Widget _buildFiltros() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       color: const Color(0xFFF5F5F5),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: DropdownButtonFormField<int?>(
-              initialValue: _maestroFiltro,
-              decoration: InputDecoration(
-                labelText: 'Maestro',
-                isDense: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 10),
-              ),
-              items: [
-                const DropdownMenuItem<int?>(
-                  value: null,
-                  child: Text('Todos'),
-                ),
-                ..._maestros.map((m) {
-                  final id = m['id'] as int?;
-                  final nombre = m['nombre'] ?? 'Sin nombre';
-                  return DropdownMenuItem<int?>(
-                    value: id,
-                    child: Text(
-                      nombre,
-                      overflow: TextOverflow.ellipsis,
+          // Fila 1: Maestro + Tipo
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<int?>(
+                  value: _maestroFiltro,
+                  decoration: InputDecoration(
+                    labelText: 'Maestro',
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  );
-                }),
-              ],
-              onChanged: (v) {
-                setState(() {
-                  _maestroFiltro = v;
-                  _cargarIncidencias();
-                });
-              },
-            ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                  ),
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Todos'),
+                    ),
+                    ..._maestros.map((m) {
+                      final id = m['id'] as int?;
+                      final nombre = m['nombre'] ?? 'Sin nombre';
+                      return DropdownMenuItem<int?>(
+                        value: id,
+                        child: Text(nombre, overflow: TextOverflow.ellipsis),
+                      );
+                    }),
+                  ],
+                  onChanged: (v) {
+                    setState(() {
+                      _maestroFiltro = v;
+                      _cargarIncidencias();
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: DropdownButtonFormField<String?>(
+                  value: _tipoFiltro,
+                  decoration: InputDecoration(
+                    labelText: 'Tipo',
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                  ),
+                  items: _tipos.map((t) {
+                    return DropdownMenuItem<String?>(
+                      value: t['value'],
+                      child: Text(t['label']!, overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
+                  onChanged: (v) {
+                    setState(() {
+                      _tipoFiltro = v;
+                      _cargarIncidencias();
+                    });
+                  },
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 0,
-            child: IconButton(
-              icon: const Icon(Icons.calendar_today),
-              color: const Color(0xFF6B2D8B),
-              onPressed: () async {
-                final date = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now(),
-                );
-                if (date != null && mounted) {
-                  setState(() {
-                    _fechaFiltro =
-                        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-                    _cargarIncidencias();
-                  });
-                }
-              },
-            ),
+          const SizedBox(height: 8),
+          // Fila 2: Fecha desde – hasta + limpiar
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.calendar_today, size: 16),
+                  label: Text(
+                    _fechaDesde != null
+                        ? 'Desde ${_fechaDesde!.day}/${_fechaDesde!.month}/${_fechaDesde!.year}'
+                        : 'Desde',
+                    style: const TextStyle(fontSize: 12),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onPressed: () async {
+                    final d = await showDatePicker(
+                      context: context,
+                      initialDate: _fechaDesde ?? DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now(),
+                    );
+                    if (d != null && mounted) {
+                      setState(() {
+                        _fechaDesde = d;
+                        _cargarIncidencias();
+                      });
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF6B2D8B),
+                    side: const BorderSide(color: Color(0xFF6B2D8B)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.calendar_today, size: 16),
+                  label: Text(
+                    _fechaHasta != null
+                        ? 'Hasta ${_fechaHasta!.day}/${_fechaHasta!.month}/${_fechaHasta!.year}'
+                        : 'Hasta',
+                    style: const TextStyle(fontSize: 12),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onPressed: () async {
+                    final d = await showDatePicker(
+                      context: context,
+                      initialDate: _fechaHasta ?? DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now(),
+                    );
+                    if (d != null && mounted) {
+                      setState(() {
+                        _fechaHasta = d;
+                        _cargarIncidencias();
+                      });
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF6B2D8B),
+                    side: const BorderSide(color: Color(0xFF6B2D8B)),
+                  ),
+                ),
+              ),
+              if (_fechaDesde != null || _fechaHasta != null) ...[
+                const SizedBox(width: 6),
+                IconButton(
+                  icon: const Icon(Icons.clear, size: 20),
+                  color: Colors.grey,
+                  tooltip: 'Limpiar fechas',
+                  onPressed: () {
+                    setState(() {
+                      _fechaDesde = null;
+                      _fechaHasta = null;
+                      _cargarIncidencias();
+                    });
+                  },
+                ),
+              ],
+            ],
           ),
         ],
       ),
@@ -223,8 +332,7 @@ class _GestionIncidenciasScreenState extends State<GestionIncidenciasScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.cloud_off,
-                size: 48, color: Color(0xFF757575)),
+            const Icon(Icons.cloud_off, size: 48, color: Color(0xFF757575)),
             const SizedBox(height: 16),
             Text(
               _error ?? 'Error',
@@ -273,8 +381,7 @@ class _GestionIncidenciasScreenState extends State<GestionIncidenciasScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.check_circle_outline,
-                size: 64, color: Colors.grey[400]),
+            Icon(Icons.check_circle_outline, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             const Text(
               'No hay incidencias en este filtro',
@@ -295,8 +402,7 @@ class _GestionIncidenciasScreenState extends State<GestionIncidenciasScreen> {
     final usuarioNombre =
         inc['usuario_nombre'] ?? inc['usuario']?.toString() ?? 'Usuario';
     final tipo = inc['tipo'] ?? '';
-    final tipoDisplay =
-        inc['tipo_display'] ?? _tipoDisplay(tipo);
+    final tipoDisplay = inc['tipo_display'] ?? _tipoDisplay(tipo);
     final fecha = inc['fecha'] ?? '';
     final descripcion = inc['descripcion'] ?? '';
 

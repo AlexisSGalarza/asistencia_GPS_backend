@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -177,12 +178,7 @@ class ApiService {
     // por seguridad (no revela si el correo está registrado).
     // Siempre tratamos 200 como éxito y avanzamos al Paso 2.
     if (response.statusCode == 200) {
-      return {
-        'success': true,
-        'mensaje': data['mensaje'],
-        'codigo_debug':
-            data['codigo_debug'], // Solo en desarrollo (null si correo no existe)
-      };
+      return {'success': true, 'mensaje': data['mensaje']};
     } else {
       return {
         'success': false,
@@ -353,16 +349,24 @@ class ApiService {
   // ─── INCIDENCIAS ───
 
   /// Obtener incidencias del maestro (o del equipo si es supervisor).
-  /// Supervisor puede filtrar: ?usuario=1&fecha=2026-02-21
+  /// Supervisor puede filtrar: ?usuario=1&fecha=2026-02-21&tipo=retardo&fecha_inicio=...&fecha_fin=...
   static Future<List<dynamic>> getIncidencias({
     int? usuarioId,
     String? fecha,
+    String? fechaInicio,
+    String? fechaFin,
+    String? tipo,
   }) async {
     final params = <String>[];
     if (usuarioId != null) params.add('usuario=$usuarioId');
     if (fecha != null && fecha.isNotEmpty) params.add('fecha=$fecha');
+    if (fechaInicio != null && fechaInicio.isNotEmpty)
+      params.add('fecha_inicio=$fechaInicio');
+    if (fechaFin != null && fechaFin.isNotEmpty)
+      params.add('fecha_fin=$fechaFin');
+    if (tipo != null && tipo.isNotEmpty) params.add('tipo=$tipo');
     String path = '/asistencia/incidencias/';
-    if (params.isNotEmpty) path += '?${params.join('&')}';
+    if (params.isNotEmpty) path += '?${params.join("&")}';
     final response = await _getAuth(path);
     if (response == null) return [];
     if (response is List) return response;
@@ -462,6 +466,12 @@ class ApiService {
     return await _deleteAuth('/usuarios/$id/') ?? {};
   }
 
+  /// Activar usuario (admin). PATCH /api/usuarios/{id}/
+  static Future<Map<String, dynamic>> activarUsuario(int id) async {
+    final res = await _patchAuth('/usuarios/$id/', {'activo': true});
+    return res ?? {};
+  }
+
   /// Crear horario (admin). POST /api/horarios/
   static Future<Map<String, dynamic>> createHorario({
     required int usuarioId,
@@ -510,16 +520,20 @@ class ApiService {
   }
 
   /// Registros de asistencia del equipo (supervisor/admin).
-  /// GET /api/asistencia/registros/?usuario=1&fecha_inicio=...&fecha_fin=...
+  /// GET /api/asistencia/registros/?usuario=1&fecha_inicio=...&fecha_fin=...&tipo=entrada&valido=true
   static Future<List<dynamic>> getRegistrosEquipo({
     int? usuarioId,
     String? fechaInicio,
     String? fechaFin,
+    String? tipo,
+    bool? soloValidos,
   }) async {
     final params = <String>[];
     if (usuarioId != null) params.add('usuario=$usuarioId');
     if (fechaInicio != null) params.add('fecha_inicio=$fechaInicio');
     if (fechaFin != null) params.add('fecha_fin=$fechaFin');
+    if (tipo != null && tipo.isNotEmpty) params.add('tipo=$tipo');
+    if (soloValidos != null) params.add('valido=$soloValidos');
     String path = '/asistencia/registros/';
     if (params.isNotEmpty) path += '?${params.join('&')}';
     final response = await _getAuth(path);
@@ -599,7 +613,33 @@ class ApiService {
     return result != null;
   }
 
-  // ─── HELPERS ───
+  // ─── REPORTES ───
+
+  /// Descarga los bytes de un reporte (PDF o Excel) del servidor.
+  /// Retorna los bytes del archivo o null si falla.
+  static Future<Uint8List?> downloadReporte(String path) async {
+    try {
+      var response = await http.get(
+        Uri.parse('$_baseUrl$path'),
+        headers: _authHeaders,
+      );
+
+      if (response.statusCode == 401) {
+        final refreshed = await refreshAccessToken();
+        if (refreshed) {
+          response = await http.get(
+            Uri.parse('$_baseUrl$path'),
+            headers: _authHeaders,
+          );
+        }
+      }
+
+      if (response.statusCode == 200) {
+        return response.bodyBytes;
+      }
+    } catch (_) {}
+    return null;
+  }
 
   /// GET autenticado con manejo de refresh automático.
   static Future<dynamic> _getAuth(String path) async {

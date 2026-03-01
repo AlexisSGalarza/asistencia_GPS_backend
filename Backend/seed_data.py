@@ -57,9 +57,9 @@ print("\n--- Usuarios de prueba listos ---")
 print("Admin: admin@escuela.com / admin123")
 print("Maestro: maestro@escuela.com / maestro123")
 print("Supervisor: supervisor@escuela.com / supervisor123")
-javier.suarezg @uanl.edu.mx
+javier.suarezg@uanl.edu.mx
 alex123gala.35@gmail.com
-hola123
+
 
 # Crear horarios L-V para el maestro
 from apps.users.models import Horario
@@ -70,17 +70,3 @@ for dia in range(5):
         defaults={'hora_entrada': '07:00', 'hora_salida': '14:30'}
     )
 print("Horarios L-V creados para el maestro")
-
-# Crear perimetro de prueba
-from apps.locations.models import Perimetro
-p, created = Perimetro.objects.get_or_create(
-    nombre='Campus Principal',
-    defaults={
-        'latitud': 20.659698,
-        'longitud': -103.349609,
-        'radio_metros': 100,
-        'activo': True,
-    }
-)
-status = "creado" if created else "ya existia"
-print(f"Perimetro {status}: {p.nombre}")

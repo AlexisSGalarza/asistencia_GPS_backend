@@ -104,6 +104,14 @@ class Incidencia(models.Model):
         SALIDA_TEMPRANA = 'salida_temprana', 'Salida Temprana'
 
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='incidencias')
+    asistencia = models.ForeignKey(
+        'Asistencia',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='incidencias',
+        help_text='Registro de asistencia que originó esta incidencia (si aplica)',
+    )
     tipo = models.CharField(max_length=20, choices=Tipo.choices)
     fecha = models.DateField()
     descripcion = models.TextField(blank=True, default='')
@@ -113,6 +121,8 @@ class Incidencia(models.Model):
         verbose_name = 'Incidencia'
         verbose_name_plural = 'Incidencias'
         ordering = ['-fecha']
+        # Evitar doble registro de la misma incidencia para el mismo usuario/tipo/día
+        unique_together = [['usuario', 'tipo', 'fecha']]
 
     def __str__(self):
         return f"{self.usuario.nombre} - {self.get_tipo_display()} - {self.fecha}"

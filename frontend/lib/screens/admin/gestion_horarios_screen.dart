@@ -16,10 +16,22 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
   String? _error;
 
   static const List<String> _dias = [
-    'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom',
+    'Lun',
+    'Mar',
+    'Mié',
+    'Jue',
+    'Vie',
+    'Sáb',
+    'Dom',
   ];
   static const List<String> _diasCompletos = [
-    'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo',
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado',
+    'Domingo',
   ];
 
   /// Agrupa horarios por id de usuario (maestro).
@@ -37,7 +49,9 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
       if (id != null) map.putIfAbsent(id, () => []);
     }
     for (final list in map.values) {
-      list.sort((a, b) => (a['dia_semana'] as int).compareTo(b['dia_semana'] as int));
+      list.sort(
+        (a, b) => (a['dia_semana'] as int).compareTo(b['dia_semana'] as int),
+      );
     }
     return map;
   }
@@ -86,7 +100,8 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
     if (h.isEmpty) return '09:00';
     final parts = h.trim().split(':');
     if (parts.length == 1) return '${parts[0].padLeft(2, '0')}:00';
-    if (parts.length == 2) return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
+    if (parts.length == 2)
+      return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
     return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}:${parts[2].padLeft(2, '0')}';
   }
 
@@ -98,7 +113,9 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
     final esEdicion = horario != null;
     final id = horario?['id'] as int?;
     final usuario = horario?['usuario'];
-    int? usuarioId = usuario is int ? usuario : (usuario is Map ? (usuario['id'] as int?) : null);
+    int? usuarioId = usuario is int
+        ? usuario
+        : (usuario is Map ? (usuario['id'] as int?) : null);
     usuarioId ??= maestroIdPreseleccionado;
     if (usuarioId == null && _maestros.isNotEmpty) {
       usuarioId = _maestros.first['id'] as int?;
@@ -145,12 +162,17 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                   initialValue: usuarioId,
                   decoration: InputDecoration(
                     labelText: 'Maestro',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   items: _maestros.map((m) {
                     final mid = m['id'] as int;
                     final name = m['nombre'] ?? 'Usuario $mid';
-                    return DropdownMenuItem(value: mid, child: Text(name.toString()));
+                    return DropdownMenuItem(
+                      value: mid,
+                      child: Text(name.toString()),
+                    );
                   }).toList(),
                   onChanged: (v) => usuarioId = v,
                 ),
@@ -159,9 +181,17 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                   initialValue: diaSemana,
                   decoration: InputDecoration(
                     labelText: 'Día',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  items: List.generate(7, (i) => DropdownMenuItem(value: i, child: Text(_diasCompletos[i]))),
+                  items: List.generate(
+                    7,
+                    (i) => DropdownMenuItem(
+                      value: i,
+                      child: Text(_diasCompletos[i]),
+                    ),
+                  ),
                   onChanged: (v) => diaSemana = v ?? 0,
                 ),
                 const SizedBox(height: 14),
@@ -169,8 +199,13 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                   controller: horaEntradaController,
                   decoration: InputDecoration(
                     labelText: 'Hora entrada (ej. 09:00)',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    prefixIcon: const Icon(Icons.login, color: Color(0xFF6B2D8B)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.login,
+                      color: Color(0xFF6B2D8B),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -178,8 +213,13 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                   controller: horaSalidaController,
                   decoration: InputDecoration(
                     labelText: 'Hora salida (ej. 18:00)',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    prefixIcon: const Icon(Icons.logout, color: Color(0xFF6B2D8B)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.logout,
+                      color: Color(0xFF6B2D8B),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -196,9 +236,14 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                               title: const Text('Eliminar horario'),
                               content: const Text('¿Eliminar este horario?'),
                               actions: [
-                                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(c, false),
+                                  child: const Text('Cancelar'),
+                                ),
                                 ElevatedButton(
-                                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFC62828)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFC62828),
+                                  ),
                                   onPressed: () => Navigator.pop(c, true),
                                   child: const Text('Eliminar'),
                                 ),
@@ -209,13 +254,19 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                             await ApiService.deleteHorario(id!);
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Horario eliminado'), backgroundColor: Color(0xFF2E7D32)),
+                                const SnackBar(
+                                  content: Text('Horario eliminado'),
+                                  backgroundColor: Color(0xFF2E7D32),
+                                ),
                               );
                               _cargarHorarios();
                             }
                           }
                         },
-                        child: const Text('Eliminar', style: TextStyle(color: Color(0xFFC62828))),
+                        child: const Text(
+                          'Eliminar',
+                          style: TextStyle(color: Color(0xFFC62828)),
+                        ),
                       ),
                       const SizedBox(width: 8),
                     ],
@@ -228,12 +279,18 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                       onPressed: () async {
                         if (usuarioId == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Selecciona un maestro')),
+                            const SnackBar(
+                              content: Text('Selecciona un maestro'),
+                            ),
                           );
                           return;
                         }
-                        final he = _formatearHoraParaBackend(horaEntradaController.text);
-                        final hs = _formatearHoraParaBackend(horaSalidaController.text);
+                        final he = _formatearHoraParaBackend(
+                          horaEntradaController.text,
+                        );
+                        final hs = _formatearHoraParaBackend(
+                          horaSalidaController.text,
+                        );
 
                         Navigator.pop(ctx);
 
@@ -247,12 +304,17 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                           );
                           if (res.isNotEmpty && res.containsKey('id')) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Horario actualizado'), backgroundColor: Color(0xFF2E7D32)),
+                              const SnackBar(
+                                content: Text('Horario actualizado'),
+                                backgroundColor: Color(0xFF2E7D32),
+                              ),
                             );
                             _cargarHorarios();
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(_mensajeErrorHorario(res))),
+                              SnackBar(
+                                content: Text(_mensajeErrorHorario(res)),
+                              ),
                             );
                           }
                         } else {
@@ -264,12 +326,17 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                           );
                           if (res.isNotEmpty && res.containsKey('id')) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Horario creado'), backgroundColor: Color(0xFF2E7D32)),
+                              const SnackBar(
+                                content: Text('Horario creado'),
+                                backgroundColor: Color(0xFF2E7D32),
+                              ),
                             );
                             _cargarHorarios();
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(_mensajeErrorHorario(res))),
+                              SnackBar(
+                                content: Text(_mensajeErrorHorario(res)),
+                              ),
                             );
                           }
                         }
@@ -306,7 +373,13 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
 
   String _mensajeErrorHorario(Map<String, dynamic> res) {
     if (res.containsKey('detail')) return res['detail'].toString();
-    for (final key in ['usuario', 'dia_semana', 'hora_entrada', 'hora_salida', 'non_field_errors']) {
+    for (final key in [
+      'usuario',
+      'dia_semana',
+      'hora_entrada',
+      'hora_salida',
+      'non_field_errors',
+    ]) {
       if (res[key] is List && (res[key] as List).isNotEmpty) {
         return (res[key] as List).first.toString();
       }
@@ -332,29 +405,33 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                       ),
                     )
                   : _error != null
-                      ? _buildError()
-                      : _maestros.isEmpty
-                          ? _buildEmptyMaestros()
-                          : RefreshIndicator(
-                              onRefresh: _cargarHorarios,
-                              color: const Color(0xFF6B2D8B),
-                              child: ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-                                itemCount: _maestros.length,
-                                itemBuilder: (context, index) {
-                                  final maestro = _maestros[index] as Map<String, dynamic>;
-                                  final maestroId = maestro['id'] as int?;
-                                  final nombre = maestro['nombre']?.toString() ?? 'Maestro';
-                                  final porMaestro = _horariosPorMaestro();
-                                  final lista = maestroId != null ? (porMaestro[maestroId] ?? []) : [];
-                                  return _buildCardMaestro(
-                                    nombre: nombre,
-                                    maestroId: maestroId ?? 0,
-                                    horarios: lista,
-                                  );
-                                },
-                              ),
-                            ),
+                  ? _buildError()
+                  : _maestros.isEmpty
+                  ? _buildEmptyMaestros()
+                  : RefreshIndicator(
+                      onRefresh: _cargarHorarios,
+                      color: const Color(0xFF6B2D8B),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+                        itemCount: _maestros.length,
+                        itemBuilder: (context, index) {
+                          final maestro =
+                              _maestros[index] as Map<String, dynamic>;
+                          final maestroId = maestro['id'] as int?;
+                          final nombre =
+                              maestro['nombre']?.toString() ?? 'Maestro';
+                          final porMaestro = _horariosPorMaestro();
+                          final lista = maestroId != null
+                              ? (porMaestro[maestroId] ?? [])
+                              : [];
+                          return _buildCardMaestro(
+                            nombre: nombre,
+                            maestroId: maestroId ?? 0,
+                            horarios: lista,
+                          );
+                        },
+                      ),
+                    ),
             ),
           ],
         ),
@@ -362,7 +439,8 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _mostrarFormularioHorario(),
         backgroundColor: const Color(0xFF6B2D8B),
-        child: const Icon(Icons.add),
+        tooltip: 'Agregar horario',
+        child: const Icon(Icons.add, color: Colors.white),
       ),
       bottomNavigationBar: buildAdminBottomNav(context, 2),
     );
@@ -391,7 +469,11 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
       ),
       child: Row(
         children: [
-          Icon(Icons.schedule, color: const Color(0xFF6B2D8B), size: width < 400 ? 28 : 36),
+          Icon(
+            Icons.schedule,
+            color: const Color(0xFF6B2D8B),
+            size: width < 400 ? 28 : 36,
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Text(
@@ -518,7 +600,11 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                     color: const Color(0xFF6B2D8B).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.person, color: Color(0xFF6B2D8B), size: 24),
+                  child: const Icon(
+                    Icons.person,
+                    color: Color(0xFF6B2D8B),
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -542,10 +628,18 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               children: List.generate(7, (dia) {
-                final listDia = horarios.where((e) => (e['dia_semana'] as int?) == dia).toList();
-                final h = listDia.isEmpty ? null : listDia.first as Map<String, dynamic>?;
-                final entrada = h != null ? _formatearHora(h['hora_entrada']) : null;
-                final salida = h != null ? _formatearHora(h['hora_salida']) : null;
+                final listDia = horarios
+                    .where((e) => (e['dia_semana'] as int?) == dia)
+                    .toList();
+                final h = listDia.isEmpty
+                    ? null
+                    : listDia.first as Map<String, dynamic>?;
+                final entrada = h != null
+                    ? _formatearHora(h['hora_entrada'])
+                    : null;
+                final salida = h != null
+                    ? _formatearHora(h['hora_salida'])
+                    : null;
                 return Material(
                   color: Colors.transparent,
                   child: InkWell(
@@ -561,7 +655,10 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                     },
                     borderRadius: BorderRadius.circular(10),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 12,
+                      ),
                       child: Row(
                         children: [
                           SizedBox(
@@ -572,7 +669,9 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                                 fontFamily: 'Montserrat',
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: entrada != null ? const Color(0xFF3D3D3D) : Colors.grey[500],
+                                color: entrada != null
+                                    ? const Color(0xFF3D3D3D)
+                                    : Colors.grey[500],
                               ),
                             ),
                           ),
@@ -600,7 +699,11 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                           if (h != null)
                             Icon(Icons.edit, size: 18, color: Colors.grey[600])
                           else
-                            Icon(Icons.add_circle_outline, size: 20, color: Colors.grey[400]),
+                            Icon(
+                              Icons.add_circle_outline,
+                              size: 20,
+                              color: Colors.grey[400],
+                            ),
                         ],
                       ),
                     ),
@@ -613,7 +716,9 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: TextButton.icon(
-              onPressed: () => _mostrarFormularioHorario(maestroIdPreseleccionado: maestroId),
+              onPressed: () => _mostrarFormularioHorario(
+                maestroIdPreseleccionado: maestroId,
+              ),
               icon: const Icon(Icons.add, size: 20, color: Color(0xFF6B2D8B)),
               label: const Text(
                 'Agregar día',

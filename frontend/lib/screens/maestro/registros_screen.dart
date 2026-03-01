@@ -97,7 +97,7 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
       // Ordenar por fecha descendente ANTES de formatear
       final sortedKeys = porFecha.keys.toList()..sort((a, b) => b.compareTo(a));
 
-      // Formatear fechas y construir lista
+      // Formatear fechas y construir lista final
       final meses = [
         'Enero',
         'Febrero',
@@ -112,6 +112,7 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
         'Noviembre',
         'Diciembre',
       ];
+
       for (final key in sortedKeys) {
         final entry = porFecha[key]!;
         final partes = key.split('-');
@@ -119,8 +120,11 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
         final mes = int.parse(partes[1]);
         final anio = partes[0];
         entry['fecha'] = '$dia de ${meses[mes - 1]} $anio';
-        if (entry['estado'] != 'Falta' && entry['estado'] != 'Retardo') {
-          asistencias++;
+
+        if (entry['estado'] != 'Falta' &&
+            entry['estado'] != 'Retardo' &&
+            entry['estado'] != 'Salida Temprana') {
+          asistencias++; // Si no es falta, ni retardo, ni salida temprana, cuanta como asistencia completa
         }
         registros.add(entry);
       }

@@ -475,8 +475,9 @@ class _GestionPerimetrosScreenState extends State<GestionPerimetrosScreen> {
                           ),
                           validator: (v) {
                             final n = double.tryParse(v ?? '');
-                            if (n == null || n < -90 || n > 90)
+                            if (n == null || n < -90 || n > 90) {
                               return '-90 a 90';
+                            }
                             return null;
                           },
                         ),
@@ -495,8 +496,9 @@ class _GestionPerimetrosScreenState extends State<GestionPerimetrosScreen> {
                           ),
                           validator: (v) {
                             final n = double.tryParse(v ?? '');
-                            if (n == null || n < -180 || n > 180)
+                            if (n == null || n < -180 || n > 180) {
                               return '-180 a 180';
+                            }
                             return null;
                           },
                         ),

@@ -18,6 +18,8 @@ class _HistorialEquipoScreenState extends State<HistorialEquipoScreen> {
   int? _maestroFiltro;
   DateTime? _fechaInicio;
   DateTime? _fechaFin;
+  String? _tipoFiltro; // 'entrada' | 'salida' | null
+  bool? _estadoFiltro; // true=válido | false=inválido | null=todos
 
   @override
   void initState() {
@@ -50,6 +52,8 @@ class _HistorialEquipoScreenState extends State<HistorialEquipoScreen> {
         fechaFin: _fechaFin != null
             ? '${_fechaFin!.year}-${_fechaFin!.month.toString().padLeft(2, '0')}-${_fechaFin!.day.toString().padLeft(2, '0')}'
             : null,
+        tipo: _tipoFiltro,
+        soloValidos: _estadoFiltro,
       );
       if (mounted) {
         setState(() {
@@ -160,15 +164,16 @@ class _HistorialEquipoScreenState extends State<HistorialEquipoScreen> {
 
   Widget _buildFiltros() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       color: const Color(0xFFF5F5F5),
       child: Column(
         children: [
+          // Fila 1: Maestro + Tipo
           Row(
             children: [
               Expanded(
                 child: DropdownButtonFormField<int?>(
-                  initialValue: _maestroFiltro,
+                  value: _maestroFiltro,
                   decoration: InputDecoration(
                     labelText: 'Maestro',
                     isDense: true,
@@ -202,9 +207,74 @@ class _HistorialEquipoScreenState extends State<HistorialEquipoScreen> {
                   },
                 ),
               ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: DropdownButtonFormField<String?>(
+                  value: _tipoFiltro,
+                  decoration: InputDecoration(
+                    labelText: 'Tipo',
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                  ),
+                  items: const [
+                    DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('Todos'),
+                    ),
+                    DropdownMenuItem<String?>(
+                      value: 'entrada',
+                      child: Text('Entrada'),
+                    ),
+                    DropdownMenuItem<String?>(
+                      value: 'salida',
+                      child: Text('Salida'),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    setState(() {
+                      _tipoFiltro = v;
+                      _cargarRegistros();
+                    });
+                  },
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
+          // Fila 2: Estado
+          DropdownButtonFormField<bool?>(
+            value: _estadoFiltro,
+            decoration: InputDecoration(
+              labelText: 'Estado',
+              isDense: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+            ),
+            items: const [
+              DropdownMenuItem<bool?>(value: null, child: Text('Todos')),
+              DropdownMenuItem<bool?>(value: true, child: Text('Válido')),
+              DropdownMenuItem<bool?>(value: false, child: Text('Inválido')),
+            ],
+            onChanged: (v) {
+              setState(() {
+                _estadoFiltro = v;
+                _cargarRegistros();
+              });
+            },
+          ),
+          const SizedBox(height: 8),
+          // Fila 3: Rango de fechas
           Row(
             children: [
               Expanded(

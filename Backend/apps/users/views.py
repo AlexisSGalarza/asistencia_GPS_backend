@@ -169,21 +169,15 @@ class SolicitarRecuperacionView(APIView):
                 fail_silently=False,
             )
         except Exception as e:
-            # Si falla el envío de email, borrar el código del caché
             cache.delete(cache_key)
             return Response(
-                {'error': f'No se pudo enviar el correo. Verifica la configuración SMTP. Detalle: {str(e)}'},
+                {'error': 'No se pudo enviar el correo. Intenta de nuevo más tarde. Detalle: ' + str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        respuesta = {
+        return Response({
             'mensaje': 'Si el correo está registrado, recibirás un código de recuperación.',
-        }
-        # En modo DEBUG, devolver el código para facilitar pruebas
-        if django_settings.DEBUG:
-            respuesta['codigo_debug'] = codigo
-
-        return Response(respuesta)
+        })
 
 
 class ConfirmarRecuperacionView(APIView):

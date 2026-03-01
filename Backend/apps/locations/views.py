@@ -20,7 +20,7 @@ TOLERANCIA_RETARDO_MIN = 10
 # Minutos antes de hora_salida para considerar salida temprana
 TOLERANCIA_SALIDA_TEMPRANA_MIN = 15
 # Horas después de la entrada para auto-registrar salida
-AUTO_SALIDA_HORAS = 10
+AUTO_SALIDA_HORAS = 12
 
 
 # ──────────────────────────────────────────────
@@ -46,18 +46,6 @@ class RegistrarAsistenciaView(APIView):
 
         response_data = AsistenciaSerializer(asistencia).data
 
-        # ── Validación de perímetro ──
-        if not asistencia.valido:
-            response_data['mensaje'] = (
-                f'Estás fuera del perímetro. '
-                f'Distancia: {asistencia.distancia_metros}m '
-                f'(máximo permitido: {asistencia.perimetro.radio_metros}m). '
-                f'GPS recibido: {asistencia.latitud_real}, {asistencia.longitud_real}. '
-                f'Centro del perímetro: {asistencia.perimetro.latitud}, {asistencia.perimetro.longitud}.'
-            )
-            response_data['estado_horario'] = 'fuera_de_perimetro'
-            return Response(response_data, status=status.HTTP_201_CREATED)
-
         # ── Validación contra horario ──
         usuario = request.usuario
         ahora = timezone.localtime()
@@ -81,11 +69,11 @@ class RegistrarAsistenciaView(APIView):
 
         if asistencia.tipo == Asistencia.Tipo.ENTRADA:
             incidencia_creada = self._validar_entrada(
-                usuario, horario, hora_actual, ahora.date()
+                usuario, horario, hora_actual, ahora.date(), asistencia=asistencia
             )
         elif asistencia.tipo == Asistencia.Tipo.SALIDA:
             incidencia_creada = self._validar_salida(
-                usuario, horario, hora_actual, ahora.date()
+                usuario, horario, hora_actual, ahora.date(), asistencia=asistencia
             )
 
         # ── Construir respuesta con feedback ──
@@ -126,13 +114,11 @@ class RegistrarAsistenciaView(APIView):
 
         return Response(response_data, status=status.HTTP_201_CREATED)
 
-    def _validar_entrada(self, usuario, horario, hora_actual, fecha_hoy):
+    def _validar_entrada(self, usuario, horario, hora_actual, fecha_hoy, asistencia=None):
         """
         Compara la hora de marcado contra hora_entrada del horario.
         Si llega después de hora_entrada + tolerancia → crea incidencia de retardo.
         """
-        from datetime import timedelta as td
-
         hora_limite = self._sumar_minutos(horario.hora_entrada, TOLERANCIA_RETARDO_MIN)
 
         if hora_actual > hora_limite:
@@ -142,6 +128,7 @@ class RegistrarAsistenciaView(APIView):
                 tipo=Incidencia.Tipo.RETARDO,
                 fecha=fecha_hoy,
                 defaults={
+                    'asistencia': asistencia,
                     'descripcion': (
                         f'Retardo automático. Hora de entrada programada: '
                         f'{horario.hora_entrada.strftime("%H:%M")}, '
@@ -153,7 +140,7 @@ class RegistrarAsistenciaView(APIView):
             return incidencia
         return None
 
-    def _validar_salida(self, usuario, horario, hora_actual, fecha_hoy):
+    def _validar_salida(self, usuario, horario, hora_actual, fecha_hoy, asistencia=None):
         """
         Compara la hora de marcado contra hora_salida del horario.
         Si sale antes de hora_salida - tolerancia → crea incidencia de salida temprana.
@@ -167,6 +154,7 @@ class RegistrarAsistenciaView(APIView):
                 tipo=Incidencia.Tipo.SALIDA_TEMPRANA,
                 fecha=fecha_hoy,
                 defaults={
+                    'asistencia': asistencia,
                     'descripcion': (
                         f'Salida temprana automática. Hora de salida programada: '
                         f'{horario.hora_salida.strftime("%H:%M")}, '
@@ -382,6 +370,8 @@ class AsistenciaViewSet(viewsets.ReadOnlyModelViewSet):
         fecha_fin = self.request.query_params.get('fecha_fin')
         solo_validos = self.request.query_params.get('valido')
 
+        tipo = self.request.query_params.get('tipo')
+
         if usuario_id:
             qs = qs.filter(usuario_id=usuario_id)
         if fecha_inicio:
@@ -390,6 +380,8 @@ class AsistenciaViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(fecha_hora__date__lte=fecha_fin)
         if solo_validos is not None:
             qs = qs.filter(valido=solo_validos.lower() == 'true')
+        if tipo:
+            qs = qs.filter(tipo=tipo)
 
         return qs
 
@@ -400,11 +392,18 @@ class AsistenciaViewSet(viewsets.ReadOnlyModelViewSet):
 
 class PerimetroViewSet(viewsets.ModelViewSet):
     """
-    CRUD de perímetros. Solo administradores.
+    CRUD de perímetros.
+    - list / retrieve: cualquier usuario autenticado (maestros lo necesitan
+      para validar su ubicación al marcar asistencia).
+    - create / update / destroy: solo administradores.
     """
     queryset = Perimetro.objects.all()
     serializer_class = PerimetroSerializer
-    permission_classes = [EsAdministrador]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [EsUsuarioAutenticado()]
+        return [EsAdministrador()]
 
 
 # ──────────────────────────────────────────────
@@ -433,11 +432,20 @@ class IncidenciaViewSet(viewsets.ModelViewSet):
         # Filtros opcionales
         usuario_id = self.request.query_params.get('usuario')
         fecha = self.request.query_params.get('fecha')
+        fecha_inicio = self.request.query_params.get('fecha_inicio')
+        fecha_fin = self.request.query_params.get('fecha_fin')
+        tipo = self.request.query_params.get('tipo')
 
         if usuario_id and not usuario.es_maestro:
             qs = qs.filter(usuario_id=usuario_id)
         if fecha:
             qs = qs.filter(fecha=fecha)
+        if fecha_inicio:
+            qs = qs.filter(fecha__gte=fecha_inicio)
+        if fecha_fin:
+            qs = qs.filter(fecha__lte=fecha_fin)
+        if tipo:
+            qs = qs.filter(tipo=tipo)
 
         return qs
 

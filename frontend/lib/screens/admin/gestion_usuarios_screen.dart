@@ -189,6 +189,23 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
+                    ] else if (esEdicion && usuario['activo'] == false) ...[
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          Navigator.pop(ctx);
+                          await ApiService.activarUsuario(id!);
+                          if (mounted)
+                            _snack('Usuario activado', success: true);
+                          _cargarUsuarios();
+                        },
+                        icon: const Icon(Icons.person, size: 20),
+                        label: const Text('Activar'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF2E7D32),
+                          side: const BorderSide(color: Color(0xFF2E7D32)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
                     ],
                     const Spacer(),
                     TextButton(
@@ -364,7 +381,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
         onPressed: () => _mostrarFormularioUsuario(),
         backgroundColor: const Color(0xFF6B2D8B),
         tooltip: 'Agregar usuario',
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
       bottomNavigationBar: buildAdminBottomNav(context, 1),
     );

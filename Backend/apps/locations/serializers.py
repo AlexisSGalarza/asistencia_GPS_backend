@@ -136,6 +136,21 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
                 'Debes estar conectado a una red institucional autorizada.'
             )
 
+        # ── Validación de GPS (No guardar en BD si está fuera) ──
+        lat = data.get('latitud')
+        lng = data.get('longitud')
+        dentro, distancia = perimetro.esta_dentro(lat, lng)
+        
+        if not dentro:
+            raise serializers.ValidationError(
+                f'Estás fuera del perímetro. '
+                f'Distancia: {distancia}m '
+                f'(máximo permitido: {perimetro.radio_metros}m).'
+            )
+            
+        data['dentro'] = dentro
+        data['distancia'] = distancia
+
         return data
 
     def create(self, validated_data):
@@ -143,9 +158,6 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
         perimetro = validated_data['perimetro']
         lat = validated_data['latitud']
         lng = validated_data['longitud']
-
-        # Validar si está dentro del perímetro (Haversine)
-        dentro, distancia = perimetro.esta_dentro(lat, lng)
 
         asistencia = Asistencia.objects.create(
             usuario=usuario,
@@ -157,8 +169,8 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
             ssid_conectado=validated_data.get('ssid', ''),
             bssid_conectado=validated_data.get('bssid', ''),
             wifi_valido=validated_data.get('wifi_valido', False),
-            valido=dentro,
-            distancia_metros=distancia,
+            valido=validated_data.get('dentro', False),
+            distancia_metros=validated_data.get('distancia', 0),
         )
         return asistencia
 
