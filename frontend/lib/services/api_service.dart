@@ -12,11 +12,11 @@ class ApiService {
   //   Entorno.local     → Celular real en tu red WiFi
   //   Entorno.railway   → Servidor en producción
   // ─────────────────────────────────────────
-  static const _Entorno _entorno = _Entorno.emulador;
+  static const _Entorno _entorno = _Entorno.railway;
 
   static const String _ipLocal = '192.168.1.100'; // Tu IP en la red WiFi
   static const String _urlRailway =
-      'https://tu-app.railway.app'; // URL de Railway
+      'https://asistenciagps-production.up.railway.app'; // URL de Railway
 
   static String get _baseUrl {
     switch (_entorno) {
@@ -28,6 +28,9 @@ class ApiService {
         return '$_urlRailway/api';
     }
   }
+
+  /// True cuando el entorno es emulador (sin WiFi real).
+  static bool get isEmulador => _entorno == _Entorno.emulador;
 
   static String? _accessToken;
   static String? _refreshToken;
@@ -296,13 +299,11 @@ class ApiService {
     return {'entrada_registrada': false, 'salida_registrada': false};
   }
 
-  /// Registrar asistencia (entrada o salida) enviando lat/lng + ssid/bssid.
+  /// Registrar asistencia (entrada o salida) enviando solo lat/lng.
   static Future<Map<String, dynamic>> registrarAsistencia({
     required String tipo,
     required double latitud,
     required double longitud,
-    String ssid = '',
-    String bssid = '',
   }) async {
     // Redondear a 6 decimales para evitar el error de validación del DecimalField en Django
     final latRounded = double.parse(latitud.toStringAsFixed(6));
@@ -315,8 +316,6 @@ class ApiService {
         'tipo': tipo,
         'latitud': latRounded,
         'longitud': lngRounded,
-        'ssid': ssid,
-        'bssid': bssid,
       }),
     );
 

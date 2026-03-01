@@ -1,18 +1,4 @@
-"""
-Management command para crear el usuario administrador inicial.
 
-Lee las credenciales SOLO desde variables de entorno — nunca desde código.
-
-En Railway: configura estas variables primero en la pestaña "Variables":
-    ADMIN_NOMBRE  → ej. ""Alexis Galarza
-    ADMIN_EMAIL   → ej. "admin@escuela.com"
-    ADMIN_PASSWORD → ej. "MiClaveSegura123!"
-
-Luego abre el Railway Shell y ejecuta:
-    python manage.py crear_admin
-
-Si ya existe un usuario con ese correo, el comando solo avisa y NO duplica.
-"""
 
 import os
 from django.core.management.base import BaseCommand, CommandError

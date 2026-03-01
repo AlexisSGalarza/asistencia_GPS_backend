@@ -40,10 +40,8 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
   // WiFi
   String _wifiSSID = '';
   String _wifiBSSID = '';
-  bool _wifiAutorizada = false;
   bool _cargandoWifi = true;
   String? _errorWifi;
-  List<dynamic> _redesAutorizadas = [];
 
   @override
   void initState() {
@@ -96,27 +94,34 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
 
   /// Carga las redes autorizadas y luego detecta la WiFi actual.
   Future<void> _cargarRedesYDetectarWifi() async {
-    try {
-      _redesAutorizadas = await ApiService.getRedesActivas();
-    } catch (_) {}
     await _detectarWifi();
   }
 
-  /// Detecta la red Wi-Fi actual y valida contra las autorizadas.
+  /// Detecta la red Wi-Fi actual y la guarda para enviar al servidor.
+  /// La validación de si está autorizada la hace el backend.
   Future<void> _detectarWifi() async {
     setState(() {
       _cargandoWifi = true;
       _errorWifi = null;
     });
 
+    // En emulador no hay WiFi real → se omite para pruebas
+    if (ApiService.isEmulador) {
+      setState(() {
+        _wifiSSID = 'EMULADOR';
+        _wifiBSSID = '';
+        _cargandoWifi = false;
+      });
+      return;
+    }
+
     try {
-      // Solicitar permiso de ubicación (requerido para WiFi info en Android 8+)
+      // Permiso de ubicación requerido para leer WiFi en Android 8+
       final locationStatus = await Permission.location.request();
       if (!locationStatus.isGranted) {
         setState(() {
           _cargandoWifi = false;
           _errorWifi = 'Permiso de ubicación necesario para detectar WiFi';
-          _wifiAutorizada = false;
         });
         return;
       }
@@ -129,46 +134,20 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
       ssid = ssid?.replaceAll('"', '').trim() ?? '';
       bssid = bssid?.trim().toUpperCase() ?? '';
 
-      // Verificar si no hay WiFi
-      if (ssid.isEmpty || ssid == '<unknown ssid>' || ssid == '0x') {
-        setState(() {
-          _wifiSSID = '';
-          _wifiBSSID = '';
-          _wifiAutorizada = false;
-          _cargandoWifi = false;
-          _errorWifi = 'No conectado a Wi-Fi';
-        });
-        return;
-      }
-
-      // Validar contra redes autorizadas
-      bool autorizada = false;
-      for (final red in _redesAutorizadas) {
-        final redBssid = (red['bssid'] ?? '').toString().toUpperCase();
-        final redSsid = (red['ssid'] ?? '').toString();
-        if (bssid.isNotEmpty && bssid == redBssid) {
-          autorizada = true;
-          break;
-        }
-        if (ssid == redSsid) {
-          autorizada = true;
-          break;
-        }
-      }
-
       if (!mounted) return;
       setState(() {
         _wifiSSID = ssid!;
         _wifiBSSID = bssid!;
-        _wifiAutorizada = autorizada;
         _cargandoWifi = false;
+        if (ssid.isEmpty || ssid == '<unknown ssid>' || ssid == '0x') {
+          _errorWifi = 'No conectado a Wi-Fi';
+        }
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _cargandoWifi = false;
         _errorWifi = 'Error al detectar Wi-Fi';
-        _wifiAutorizada = false;
       });
     }
   }
@@ -349,8 +328,6 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
         tipo: tipo,
         latitud: lat,
         longitud: lng,
-        ssid: _wifiSSID,
-        bssid: _wifiBSSID,
       );
 
       if (!mounted) return;
@@ -809,16 +786,11 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
       texto = _errorWifi!;
       color = const Color(0xFFC62828);
       icono = Icons.wifi_off;
-    } else if (_wifiAutorizada) {
-      texto = 'Red autorizada';
-      color = const Color(0xFF2E7D32);
-      icono = Icons.wifi;
-      subtexto = _wifiSSID;
     } else {
-      texto = 'Red no autorizada';
-      color = const Color(0xFFC62828);
-      icono = Icons.wifi_lock;
-      subtexto = _wifiSSID.isNotEmpty ? _wifiSSID : 'Sin conexión';
+      texto = _wifiSSID.isNotEmpty ? _wifiSSID : 'Wi-Fi detectado';
+      color = const Color(0xFF1565C0);
+      icono = Icons.wifi;
+      subtexto = _wifiBSSID.isNotEmpty ? _wifiBSSID : '';
     }
 
     return GestureDetector(
@@ -895,10 +867,6 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
       texto = 'Fuera del perímetro';
       color = const Color(0xFFC62828);
       icono = Icons.cancel;
-    } else if (!_wifiAutorizada && !_cargandoWifi) {
-      texto = 'Red Wi-Fi no autorizada';
-      color = const Color(0xFFE65100);
-      icono = Icons.wifi_off;
     } else if (_salidaRegistrada) {
       texto = 'Jornada completada';
       color = const Color(0xFF2E7D32);
@@ -948,13 +916,12 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
 
   // ---------- Botones de registro ----------
   Widget _buildBotones(Size size) {
-    // Entrada activa si: tiene ubicación Y WiFi autorizada Y no ha registrado entrada
+    // Entrada activa si: tiene ubicación Y no ha registrado entrada (WiFi la valida el servidor)
     final bool entradaActiva =
-        _ubicacionActual != null && _wifiAutorizada && !_entradaRegistrada;
-    // Salida activa si: tiene ubicación Y WiFi autorizada Y ya registró entrada Y no ha registrado salida
+        _ubicacionActual != null && !_entradaRegistrada;
+    // Salida activa si: tiene ubicación Y ya registró entrada Y no ha registrado salida
     final bool salidaActiva =
         _ubicacionActual != null &&
-        _wifiAutorizada &&
         _entradaRegistrada &&
         !_salidaRegistrada;
 

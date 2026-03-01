@@ -106,16 +106,16 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
         if bssid:
             # Buscar por BSSID (más confiable que SSID ya que el SSID puede clonarse)
             red_autorizada = RedAutorizada.objects.filter(
-                bssid=bssid,
+                bssid__iexact=bssid,
                 activo=True,
             ).first()
             if red_autorizada:
                 wifi_valido = True
 
         if not wifi_valido and ssid:
-            # Fallback: buscar por SSID solamente
+            # Fallback: buscar por SSID (case-insensitive)
             red_autorizada = RedAutorizada.objects.filter(
-                ssid=ssid,
+                ssid__iexact=ssid,
                 activo=True,
             ).first()
             if red_autorizada:
@@ -123,18 +123,6 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
 
         data['wifi_valido'] = wifi_valido
         data['red_autorizada'] = red_autorizada
-
- 
-        if not wifi_valido:
-            if not ssid and not bssid:
-                raise serializers.ValidationError(
-                    'No se detectó conexión Wi-Fi. '
-                    'Debes estar conectado a la red institucional para registrar asistencia.'
-                )
-            raise serializers.ValidationError(
-                f'La red Wi-Fi "{ssid}" no está autorizada. '
-                'Debes estar conectado a una red institucional autorizada.'
-            )
 
         # ── Validación de GPS (No guardar en BD si está fuera) ──
         lat = data.get('latitud')
