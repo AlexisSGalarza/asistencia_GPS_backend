@@ -146,276 +146,279 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
           ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  esEdicion ? 'Editar horario' : 'Nuevo horario',
-                  style: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF6B2D8B),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                DropdownButtonFormField<int>(
-                  initialValue: usuarioId,
-                  decoration: InputDecoration(
-                    labelText: 'Maestro',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    esEdicion ? 'Editar horario' : 'Nuevo horario',
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF6B2D8B),
                     ),
                   ),
-                  items: _maestros.map((m) {
-                    final mid = m['id'] as int;
-                    final name = m['nombre'] ?? 'Usuario $mid';
-                    return DropdownMenuItem(
-                      value: mid,
-                      child: Text(name.toString()),
-                    );
-                  }).toList(),
-                  onChanged: (v) => usuarioId = v,
-                ),
-                const SizedBox(height: 14),
-                DropdownButtonFormField<int>(
-                  initialValue: diaSemana,
-                  decoration: InputDecoration(
-                    labelText: 'Día',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  items: List.generate(
-                    7,
-                    (i) => DropdownMenuItem(
-                      value: i,
-                      child: Text(_diasCompletos[i]),
-                    ),
-                  ),
-                  onChanged: (v) => diaSemana = v ?? 0,
-                ),
-                const SizedBox(height: 14),
-                // ── Selector de hora entrada ──
-                InkWell(
-                  onTap: () async {
-                    final picked = await showTimePicker(
-                      context: ctx,
-                      initialTime: horaEntrada,
-                      builder: (context, child) => MediaQuery(
-                        data: MediaQuery.of(context).copyWith(
-                          alwaysUse24HourFormat: true,
-                        ),
-                        child: child!,
-                      ),
-                    );
-                    if (picked != null) {
-                      setDialogState(() => horaEntrada = picked);
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: InputDecorator(
+                  const SizedBox(height: 20),
+                  DropdownButtonFormField<int>(
+                    initialValue: usuarioId,
                     decoration: InputDecoration(
-                      labelText: 'Hora entrada',
+                      labelText: 'Maestro',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      prefixIcon: const Icon(
-                        Icons.login,
-                        color: Color(0xFF6B2D8B),
-                      ),
-                      suffixIcon: const Icon(
-                        Icons.access_time,
-                        color: Color(0xFF6B2D8B),
-                      ),
                     ),
-                    child: Text(
-                      '${horaEntrada.hour.toString().padLeft(2, '0')}:${horaEntrada.minute.toString().padLeft(2, '0')}',
-                      style: const TextStyle(fontSize: 16),
-                    ),
+                    items: _maestros.map((m) {
+                      final mid = m['id'] as int;
+                      final name = m['nombre'] ?? 'Usuario $mid';
+                      return DropdownMenuItem(
+                        value: mid,
+                        child: Text(name.toString()),
+                      );
+                    }).toList(),
+                    onChanged: (v) => usuarioId = v,
                   ),
-                ),
-                const SizedBox(height: 14),
-                // ── Selector de hora salida ──
-                InkWell(
-                  onTap: () async {
-                    final picked = await showTimePicker(
-                      context: ctx,
-                      initialTime: horaSalida,
-                      builder: (context, child) => MediaQuery(
-                        data: MediaQuery.of(context).copyWith(
-                          alwaysUse24HourFormat: true,
-                        ),
-                        child: child!,
-                      ),
-                    );
-                    if (picked != null) {
-                      setDialogState(() => horaSalida = picked);
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: InputDecorator(
+                  const SizedBox(height: 14),
+                  DropdownButtonFormField<int>(
+                    initialValue: diaSemana,
                     decoration: InputDecoration(
-                      labelText: 'Hora salida',
+                      labelText: 'Día',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      prefixIcon: const Icon(
-                        Icons.logout,
-                        color: Color(0xFF6B2D8B),
-                      ),
-                      suffixIcon: const Icon(
-                        Icons.access_time,
-                        color: Color(0xFF6B2D8B),
+                    ),
+                    items: List.generate(
+                      7,
+                      (i) => DropdownMenuItem(
+                        value: i,
+                        child: Text(_diasCompletos[i]),
                       ),
                     ),
-                    child: Text(
-                      '${horaSalida.hour.toString().padLeft(2, '0')}:${horaSalida.minute.toString().padLeft(2, '0')}',
-                      style: const TextStyle(fontSize: 16),
+                    onChanged: (v) => diaSemana = v ?? 0,
+                  ),
+                  const SizedBox(height: 14),
+                  // ── Selector de hora entrada ──
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: ctx,
+                        initialTime: horaEntrada,
+                        builder: (context, child) => MediaQuery(
+                          data: MediaQuery.of(
+                            context,
+                          ).copyWith(alwaysUse24HourFormat: true),
+                          child: child!,
+                        ),
+                      );
+                      if (picked != null) {
+                        setDialogState(() => horaEntrada = picked);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: 'Hora entrada',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.login,
+                          color: Color(0xFF6B2D8B),
+                        ),
+                        suffixIcon: const Icon(
+                          Icons.access_time,
+                          color: Color(0xFF6B2D8B),
+                        ),
+                      ),
+                      child: Text(
+                        '${horaEntrada.hour.toString().padLeft(2, '0')}:${horaEntrada.minute.toString().padLeft(2, '0')}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (esEdicion) ...[
-                      TextButton(
-                        onPressed: () async {
-                          Navigator.pop(ctx);
-                          final ok = await showDialog<bool>(
-                            context: context,
-                            builder: (c) => AlertDialog(
-                              title: const Text('Eliminar horario'),
-                              content: const Text('¿Eliminar este horario?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(c, false),
-                                  child: const Text('Cancelar'),
-                                ),
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFC62828),
+                  const SizedBox(height: 14),
+                  // ── Selector de hora salida ──
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: ctx,
+                        initialTime: horaSalida,
+                        builder: (context, child) => MediaQuery(
+                          data: MediaQuery.of(
+                            context,
+                          ).copyWith(alwaysUse24HourFormat: true),
+                          child: child!,
+                        ),
+                      );
+                      if (picked != null) {
+                        setDialogState(() => horaSalida = picked);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: 'Hora salida',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.logout,
+                          color: Color(0xFF6B2D8B),
+                        ),
+                        suffixIcon: const Icon(
+                          Icons.access_time,
+                          color: Color(0xFF6B2D8B),
+                        ),
+                      ),
+                      child: Text(
+                        '${horaSalida.hour.toString().padLeft(2, '0')}:${horaSalida.minute.toString().padLeft(2, '0')}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (esEdicion) ...[
+                        TextButton(
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            final ok = await showDialog<bool>(
+                              context: context,
+                              builder: (c) => AlertDialog(
+                                title: const Text('Eliminar horario'),
+                                content: const Text('¿Eliminar este horario?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(c, false),
+                                    child: const Text('Cancelar'),
                                   ),
-                                  onPressed: () => Navigator.pop(c, true),
-                                  child: const Text('Eliminar'),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (ok == true) {
-                            await ApiService.deleteHorario(id!);
-                            if (mounted) {
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFC62828),
+                                    ),
+                                    onPressed: () => Navigator.pop(c, true),
+                                    child: const Text('Eliminar'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (ok == true) {
+                              await ApiService.deleteHorario(id!);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Horario eliminado'),
+                                    backgroundColor: Color(0xFF2E7D32),
+                                  ),
+                                );
+                                _cargarHorarios();
+                              }
+                            }
+                          },
+                          child: const Text(
+                            'Eliminar',
+                            style: TextStyle(color: Color(0xFFC62828)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Cancelar'),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () async {
+                          if (usuarioId == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Selecciona un maestro'),
+                              ),
+                            );
+                            return;
+                          }
+                          final he = _timeOfDayToBackend(horaEntrada);
+                          final hs = _timeOfDayToBackend(horaSalida);
+
+                          Navigator.pop(ctx);
+
+                          if (esEdicion) {
+                            final res = await ApiService.updateHorario(
+                              id!,
+                              usuarioId: usuarioId,
+                              diaSemana: diaSemana,
+                              horaEntrada: he,
+                              horaSalida: hs,
+                            );
+                            if (res.isNotEmpty && res.containsKey('id')) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Horario eliminado'),
+                                  content: Text('Horario actualizado'),
                                   backgroundColor: Color(0xFF2E7D32),
                                 ),
                               );
                               _cargarHorarios();
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(_mensajeErrorHorario(res)),
+                                ),
+                              );
+                            }
+                          } else {
+                            final res = await ApiService.createHorario(
+                              usuarioId: usuarioId!,
+                              diaSemana: diaSemana,
+                              horaEntrada: he,
+                              horaSalida: hs,
+                            );
+                            if (res.isNotEmpty && res.containsKey('id')) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Horario creado'),
+                                  backgroundColor: Color(0xFF2E7D32),
+                                ),
+                              );
+                              _cargarHorarios();
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(_mensajeErrorHorario(res)),
+                                ),
+                              );
                             }
                           }
                         },
-                        child: const Text(
-                          'Eliminar',
-                          style: TextStyle(color: Color(0xFFC62828)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6B2D8B),
+                          foregroundColor: Colors.white,
                         ),
+                        child: Text(esEdicion ? 'Guardar' : 'Crear'),
                       ),
-                      const SizedBox(width: 8),
                     ],
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Cancelar'),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () async {
-                        if (usuarioId == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Selecciona un maestro'),
-                            ),
-                          );
-                          return;
-                        }
-                        final he = _timeOfDayToBackend(horaEntrada);
-                        final hs = _timeOfDayToBackend(horaSalida);
-
-                        Navigator.pop(ctx);
-
-                        if (esEdicion) {
-                          final res = await ApiService.updateHorario(
-                            id!,
-                            usuarioId: usuarioId,
-                            diaSemana: diaSemana,
-                            horaEntrada: he,
-                            horaSalida: hs,
-                          );
-                          if (res.isNotEmpty && res.containsKey('id')) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Horario actualizado'),
-                                backgroundColor: Color(0xFF2E7D32),
-                              ),
-                            );
-                            _cargarHorarios();
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(_mensajeErrorHorario(res)),
-                              ),
-                            );
-                          }
-                        } else {
-                          final res = await ApiService.createHorario(
-                            usuarioId: usuarioId!,
-                            diaSemana: diaSemana,
-                            horaEntrada: he,
-                            horaSalida: hs,
-                          );
-                          if (res.isNotEmpty && res.containsKey('id')) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Horario creado'),
-                                backgroundColor: Color(0xFF2E7D32),
-                              ),
-                            );
-                            _cargarHorarios();
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(_mensajeErrorHorario(res)),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6B2D8B),
-                        foregroundColor: Colors.white,
-                      ),
-                      child: Text(esEdicion ? 'Guardar' : 'Crear'),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
   }
 
   String _formatearHora(dynamic v) {
