@@ -1,5 +1,11 @@
 [build]
 builder = "nixpacks"
 
-[deploy]
-startCommand = "python manage.py migrate --no-input && python manage.py crear_admin; gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"
+# El comando de inicio del servidor web viene del Procfile:
+#   web: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+#
+# Para el servicio CRON de auto-salidas, crea un servicio separado en Railway
+# (GitHub Repository → mismo repo) y en Settings > Deploy configura:
+#   Custom Start Command : python manage.py auto_salidas
+#   Cron Schedule        : 0 6 * * *   (06:00 UTC = 00:00 CST México)
+#   Root Directory       : Backend
