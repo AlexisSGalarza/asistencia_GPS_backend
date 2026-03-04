@@ -96,13 +96,23 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
     } catch (_) {}
   }
 
-  String _formatearHoraParaBackend(String h) {
-    if (h.isEmpty) return '09:00';
-    final parts = h.trim().split(':');
-    if (parts.length == 1) return '${parts[0].padLeft(2, '0')}:00';
-    if (parts.length == 2)
-      return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
-    return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}:${parts[2].padLeft(2, '0')}';
+  /// Convierte "HH:MM" o "HH:MM:SS" del backend a TimeOfDay.
+  TimeOfDay _parseTimeOfDay(dynamic v, {TimeOfDay? fallback}) {
+    fallback ??= const TimeOfDay(hour: 9, minute: 0);
+    if (v == null) return fallback;
+    final parts = v.toString().split(':');
+    if (parts.length >= 2) {
+      return TimeOfDay(
+        hour: int.tryParse(parts[0]) ?? fallback.hour,
+        minute: int.tryParse(parts[1]) ?? fallback.minute,
+      );
+    }
+    return fallback;
+  }
+
+  /// Formatea TimeOfDay a "HH:MM:00" para el backend.
+  String _timeOfDayToBackend(TimeOfDay t) {
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:00';
   }
 
   void _mostrarFormularioHorario({
@@ -121,18 +131,21 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
       usuarioId = _maestros.first['id'] as int?;
     }
     int diaSemana = horario?['dia_semana'] as int? ?? diaPreseleccionado ?? 0;
-    final horaEntradaController = TextEditingController(
-      text: _formatearHoraDisplay(horario?['hora_entrada']),
+    TimeOfDay horaEntrada = _parseTimeOfDay(
+      horario?['hora_entrada'],
+      fallback: const TimeOfDay(hour: 9, minute: 0),
     );
-    final horaSalidaController = TextEditingController(
-      text: _formatearHoraDisplay(horario?['hora_salida']),
+    TimeOfDay horaSalida = _parseTimeOfDay(
+      horario?['hora_salida'],
+      fallback: const TimeOfDay(hour: 17, minute: 0),
     );
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Padding(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
         child: Container(
           padding: const EdgeInsets.all(24),
@@ -195,30 +208,82 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                   onChanged: (v) => diaSemana = v ?? 0,
                 ),
                 const SizedBox(height: 14),
-                TextField(
-                  controller: horaEntradaController,
-                  decoration: InputDecoration(
-                    labelText: 'Hora entrada (ej. 09:00)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                // ── Selector de hora entrada ──
+                InkWell(
+                  onTap: () async {
+                    final picked = await showTimePicker(
+                      context: ctx,
+                      initialTime: horaEntrada,
+                      builder: (context, child) => MediaQuery(
+                        data: MediaQuery.of(context).copyWith(
+                          alwaysUse24HourFormat: true,
+                        ),
+                        child: child!,
+                      ),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => horaEntrada = picked);
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Hora entrada',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.login,
+                        color: Color(0xFF6B2D8B),
+                      ),
+                      suffixIcon: const Icon(
+                        Icons.access_time,
+                        color: Color(0xFF6B2D8B),
+                      ),
                     ),
-                    prefixIcon: const Icon(
-                      Icons.login,
-                      color: Color(0xFF6B2D8B),
+                    child: Text(
+                      '${horaEntrada.hour.toString().padLeft(2, '0')}:${horaEntrada.minute.toString().padLeft(2, '0')}',
+                      style: const TextStyle(fontSize: 16),
                     ),
                   ),
                 ),
                 const SizedBox(height: 14),
-                TextField(
-                  controller: horaSalidaController,
-                  decoration: InputDecoration(
-                    labelText: 'Hora salida (ej. 18:00)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                // ── Selector de hora salida ──
+                InkWell(
+                  onTap: () async {
+                    final picked = await showTimePicker(
+                      context: ctx,
+                      initialTime: horaSalida,
+                      builder: (context, child) => MediaQuery(
+                        data: MediaQuery.of(context).copyWith(
+                          alwaysUse24HourFormat: true,
+                        ),
+                        child: child!,
+                      ),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => horaSalida = picked);
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Hora salida',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.logout,
+                        color: Color(0xFF6B2D8B),
+                      ),
+                      suffixIcon: const Icon(
+                        Icons.access_time,
+                        color: Color(0xFF6B2D8B),
+                      ),
                     ),
-                    prefixIcon: const Icon(
-                      Icons.logout,
-                      color: Color(0xFF6B2D8B),
+                    child: Text(
+                      '${horaSalida.hour.toString().padLeft(2, '0')}:${horaSalida.minute.toString().padLeft(2, '0')}',
+                      style: const TextStyle(fontSize: 16),
                     ),
                   ),
                 ),
@@ -285,12 +350,8 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                           );
                           return;
                         }
-                        final he = _formatearHoraParaBackend(
-                          horaEntradaController.text,
-                        );
-                        final hs = _formatearHoraParaBackend(
-                          horaSalidaController.text,
-                        );
+                        final he = _timeOfDayToBackend(horaEntrada);
+                        final hs = _timeOfDayToBackend(horaSalida);
 
                         Navigator.pop(ctx);
 
@@ -354,14 +415,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  String _formatearHoraDisplay(dynamic v) {
-    if (v == null) return '09:00';
-    final s = v.toString();
-    if (s.length >= 5) return s.substring(0, 5);
-    return s;
+    ));
   }
 
   String _formatearHora(dynamic v) {

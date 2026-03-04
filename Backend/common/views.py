@@ -1,5 +1,6 @@
 from rest_framework.views import APIView
 from django.http import FileResponse, HttpResponse
+from django.utils import timezone as tz
 from common.permissions import EsSupervisorOAdmin
 from common.reportes import generar_reporte_asistencia, generar_reporte_incidencias
 from apps.locations.models import Asistencia, Incidencia
@@ -64,6 +65,9 @@ class ReporteIncidenciasPDFView(APIView):
         if fecha_fin:
             qs = qs.filter(fecha__lte=fecha_fin)
 
+        # 'olvido_salida' es informativo (no afecta nómina); se excluye del reporte
+        # El admin puede consultarlas aparte con ?tipo=olvido_salida en el API.
+        qs = qs.exclude(tipo=Incidencia.Tipo.OLVIDO_SALIDA)
         qs = qs.order_by('fecha')
 
         buffer = generar_reporte_incidencias(
@@ -124,12 +128,14 @@ class ReporteAsistenciaExcelView(APIView):
             cell.alignment = Alignment(horizontal='center')
 
         for i, a in enumerate(qs, 1):
+            # Convertir a hora local México antes de formatear
+            fecha_local = tz.localtime(a.fecha_hora)
             ws.append([
                 i,
                 a.usuario.nombre,
                 a.usuario.correo,
                 a.get_tipo_display(),
-                a.fecha_hora.strftime('%d/%m/%Y %H:%M'),
+                fecha_local.strftime('%d/%m/%Y %H:%M'),
                 'Sí' if a.valido else 'No',
                 round(a.distancia_metros, 1),
                 a.perimetro.nombre,
@@ -179,6 +185,9 @@ class ReporteIncidenciasExcelView(APIView):
         if fecha_fin:
             qs = qs.filter(fecha__lte=fecha_fin)
 
+        # 'olvido_salida' es informativo (no afecta nómina); se excluye del reporte
+        # El admin puede consultarlas aparte con ?tipo=olvido_salida en el API.
+        qs = qs.exclude(tipo=Incidencia.Tipo.OLVIDO_SALIDA)
         qs = qs.order_by('fecha')
 
         wb = openpyxl.Workbook()

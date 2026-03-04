@@ -138,7 +138,7 @@ class _ReportesMaestrosScreenState extends State<ReportesMaestrosScreen> {
                               ),
                               const SizedBox(height: 14),
                               DropdownButtonFormField<int?>(
-                                value: _maestroFiltro,
+                                initialValue: _maestroFiltro,
                                 decoration: InputDecoration(
                                   labelText: 'Maestro (opcional)',
                                   isDense: true,

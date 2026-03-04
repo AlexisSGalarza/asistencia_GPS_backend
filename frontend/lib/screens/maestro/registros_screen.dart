@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+  import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../widgets/animated_list_item.dart';
 import '../login/login_screen.dart';
@@ -72,9 +72,17 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
         if (tipo == 'retardo') retardos++;
         if (tipo == 'falta') faltas++;
         if (fecha.toString().isNotEmpty) {
-          // Prioridad: falta > retardo > salida_temprana
+          // Prioridad: falta > retardo > salida_temprana > olvido_salida
+          const prioridad = {
+            'falta': 4,
+            'retardo': 3,
+            'salida_temprana': 2,
+            'olvido_salida': 1,
+          };
           final existente = incidenciasPorFecha[fecha];
-          if (existente == null || tipo == 'falta') {
+          final pNuevo = prioridad[tipo] ?? 0;
+          final pExistente = prioridad[existente] ?? 0;
+          if (existente == null || pNuevo > pExistente) {
             incidenciasPorFecha[fecha] = tipo;
           }
         }
@@ -89,6 +97,8 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
           entry.value['estado'] = 'Falta';
         } else if (incTipo == 'salida_temprana') {
           entry.value['estado'] = 'Salida Temprana';
+        } else if (incTipo == 'olvido_salida') {
+          entry.value['estado'] = 'Olvidó Salida';
         } else {
           entry.value['estado'] = 'Completo';
         }
@@ -124,7 +134,7 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
         if (entry['estado'] != 'Falta' &&
             entry['estado'] != 'Retardo' &&
             entry['estado'] != 'Salida Temprana') {
-          asistencias++; // Si no es falta, ni retardo, ni salida temprana, cuanta como asistencia completa
+          asistencias++; // Olvidó Salida sí cuenta como asistencia (el maestro sí fue)
         }
         registros.add(entry);
       }
@@ -366,6 +376,10 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
       case 'Salida Temprana':
         estadoColor = const Color(0xFFE65100);
         estadoIcono = Icons.exit_to_app;
+        break;
+      case 'Olvidó Salida':
+        estadoColor = const Color(0xFF7B1FA2);
+        estadoIcono = Icons.timer_off_rounded;
         break;
       default:
         estadoColor = Colors.grey;

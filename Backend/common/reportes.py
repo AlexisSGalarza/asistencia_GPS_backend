@@ -3,6 +3,7 @@ Generación de reportes PDF con ReportLab.
 """
 import io
 from datetime import date
+from django.utils import timezone as tz
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -33,7 +34,7 @@ def generar_reporte_asistencia(asistencias, titulo="Reporte de Asistencia", fech
     if fecha_inicio and fecha_fin:
         subtitulo = f"Período: {fecha_inicio} al {fecha_fin}"
     else:
-        subtitulo = f"Generado el: {date.today().strftime('%d/%m/%Y')}"
+        subtitulo = f"Generado el: {tz.localtime().date().strftime('%d/%m/%Y')}"
     elements.append(Paragraph(subtitulo, styles['Normal']))
     elements.append(Spacer(1, 0.3 * inch))
 
@@ -41,11 +42,13 @@ def generar_reporte_asistencia(asistencias, titulo="Reporte de Asistencia", fech
     data = [['#', 'Maestro', 'Tipo', 'Fecha/Hora', 'Válido', 'Distancia (m)', 'Perímetro']]
 
     for i, a in enumerate(asistencias, 1):
+        # Convertir a hora local México antes de formatear
+        fecha_local = tz.localtime(a.fecha_hora)
         data.append([
             str(i),
             a.usuario.nombre,
             a.get_tipo_display(),
-            a.fecha_hora.strftime('%d/%m/%Y %H:%M'),
+            fecha_local.strftime('%d/%m/%Y %H:%M'),
             'Sí' if a.valido else 'No',
             f"{a.distancia_metros:.1f}",
             a.perimetro.nombre,
@@ -95,7 +98,7 @@ def generar_reporte_incidencias(incidencias, titulo="Reporte de Incidencias", fe
     if fecha_inicio and fecha_fin:
         subtitulo = f"Período: {fecha_inicio} al {fecha_fin}"
     else:
-        subtitulo = f"Generado el: {date.today().strftime('%d/%m/%Y')}"
+        subtitulo = f"Generado el: {tz.localtime().date().strftime('%d/%m/%Y')}"
     elements.append(Paragraph(subtitulo, styles['Normal']))
     elements.append(Spacer(1, 0.3 * inch))
 

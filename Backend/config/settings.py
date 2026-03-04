@@ -18,8 +18,14 @@ if os.path.exists(_env_file):
     environ.Env.read_env(_env_file)
 
 # ─── Seguridad ──────────────────────────────────────────────────────────────────
-SECRET_KEY = env('SECRET_KEY', default='cambiar-en-produccion-ahora-mismo')
-DEBUG = env.bool('DEBUG', default=True)  # False en producción (Railway lo setea)
+# En producción SECRET_KEY DEBE venir del entorno. En local se toma de claves.env.
+DEBUG = env.bool('DEBUG', default=False)  # Railway lo setea a False
+
+if DEBUG:
+    SECRET_KEY = env('SECRET_KEY', default='dev-only-insecure-secret-key-local-use')
+else:
+    # En producción falla fuerte si no está definida la clave
+    SECRET_KEY = env('SECRET_KEY')
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
 
@@ -125,7 +131,12 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # ─── CORS ────────────────────────────────────────────────────────────────────────
-CORS_ALLOW_ALL_ORIGINS = True
+# En desarrollo aceptamos cualquier origen; en producción solo los definidos en el entorno.
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
 
 # ─── Email (Gmail SMTP) ──────────────────────────────────────────────────────────
 # Para Gmail: activa verificación en 2 pasos → https://myaccount.google.com/apppasswords
@@ -165,6 +176,17 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    # Throttling global: limita peticiones por usuario/IP para evitar abuso
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/minute',      # IPs no autenticadas: 60 req/min
+        'user': '200/minute',     # Usuarios autenticados: 200 req/min
+        'login': '10/minute',     # Intentos de login: 10/min por IP
+        'recuperacion': '5/minute',  # Solicitudes de recuperación: 5/min
+    },
 }
 
 # ─── JWT ─────────────────────────────────────────────────────────────────────────

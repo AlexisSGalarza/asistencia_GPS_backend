@@ -51,6 +51,11 @@ class Usuario(models.Model):
         """Verifica una contraseña contra el hash almacenado."""
         return check_password(raw_password, self.password)
 
+    # Requerido por DRF (throttling, etc.) cuando se usa como request.user
+    @property
+    def is_authenticated(self):
+        return True
+
     @property
     def es_admin(self):
         return self.rol.nombre == Rol.Nombre.ADMINISTRADOR

@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
+from datetime import datetime as _dt, time as _time
 from .models import Perimetro, Asistencia, Incidencia, RedAutorizada
 
 
@@ -49,9 +50,8 @@ class AsistenciaSerializer(serializers.ModelSerializer):
 
 class RegistrarAsistenciaSerializer(serializers.Serializer):
     """
-    Serializer para que un maestro registre su entrada/salida.
-    Recibe lat/lng y ssid/bssid del dispositivo.
-    Valida contra el perímetro activo Y la red Wi-Fi autorizada.
+    Registra entrada o salida de un maestro.
+    Valida perímetro GPS. WiFi se guarda para auditoría pero no bloquea.
     Solo permite una entrada y una salida por día.
     """
     tipo = serializers.ChoiceField(choices=Asistencia.Tipo.choices)
@@ -61,21 +61,26 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
     bssid = serializers.CharField(max_length=17, required=False, default='', allow_blank=True)
 
     def validate(self, data):
-        # Buscar perímetro activo
         perimetro = Perimetro.objects.filter(activo=True).first()
         if not perimetro:
             raise serializers.ValidationError('No hay un perímetro activo configurado.')
         data['perimetro'] = perimetro
 
-        # Validar máximo una entrada y una salida por día
         usuario = self.context['usuario']
-        hoy = timezone.localtime(timezone.now()).date()
+        hoy = timezone.localtime().date()
         tipo = data['tipo']
+
+        # Rango UTC del día México — evita el bug cuando el maestro marca
+        # después de las 18:00 CST (= 00:00 UTC del día siguiente)
+        _tz_mx = timezone.get_current_timezone()
+        _inicio_hoy = timezone.make_aware(_dt.combine(hoy, _time.min), _tz_mx)
+        _fin_hoy    = timezone.make_aware(_dt.combine(hoy, _time.max), _tz_mx)
 
         ya_existe = Asistencia.objects.filter(
             usuario=usuario,
             tipo=tipo,
-            fecha_hora__date=hoy,
+            fecha_hora__gte=_inicio_hoy,
+            fecha_hora__lte=_fin_hoy,
             valido=True,
         ).exists()
 
@@ -86,12 +91,12 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
                 f'Solo se permite una {tipo_display} por día.'
             )
 
-        # Si intenta salida sin entrada, rechazar
         if tipo == 'salida':
             tiene_entrada = Asistencia.objects.filter(
                 usuario=usuario,
                 tipo='entrada',
-                fecha_hora__date=hoy,
+                fecha_hora__gte=_inicio_hoy,
+                fecha_hora__lte=_fin_hoy,
                 valido=True,
             ).exists()
             if not tiene_entrada:
@@ -99,7 +104,7 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
                     'Debes registrar tu entrada antes de marcar la salida.'
                 )
 
-        # ── Validar red Wi-Fi ──
+        # WiFi: guardar para auditoría, no bloquea el registro
         ssid = data.get('ssid', '').strip()
         bssid = data.get('bssid', '').strip().upper()
         data['ssid'] = ssid
@@ -109,7 +114,6 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
         red_autorizada = None
 
         if bssid:
-            # Buscar por BSSID (más confiable que SSID ya que el SSID puede clonarse)
             red_autorizada = RedAutorizada.objects.filter(
                 bssid__iexact=bssid,
                 activo=True,
@@ -118,7 +122,6 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
                 wifi_valido = True
 
         if not wifi_valido and ssid:
-            # Fallback: buscar por SSID (case-insensitive)
             red_autorizada = RedAutorizada.objects.filter(
                 ssid__iexact=ssid,
                 activo=True,
@@ -129,18 +132,18 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
         data['wifi_valido'] = wifi_valido
         data['red_autorizada'] = red_autorizada
 
-        # ── Validación de GPS (No guardar en BD si está fuera) ──
+        # Validar GPS
         lat = data.get('latitud')
         lng = data.get('longitud')
         dentro, distancia = perimetro.esta_dentro(lat, lng)
-        
+
         if not dentro:
             raise serializers.ValidationError(
                 f'Estás fuera del perímetro. '
                 f'Distancia: {distancia}m '
                 f'(máximo permitido: {perimetro.radio_metros}m).'
             )
-            
+
         data['dentro'] = dentro
         data['distancia'] = distancia
 
@@ -177,6 +180,9 @@ class IncidenciaSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'usuario', 'usuario_nombre',
             'tipo', 'tipo_display',
-            'fecha', 'descripcion', 'created_at',
+            'fecha', 'descripcion',
+            'asistencia',   # FK al registro que originó la incidencia
+            'created_at',
         ]
+        read_only_fields = ['created_at']
         read_only_fields = ['created_at']

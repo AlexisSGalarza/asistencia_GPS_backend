@@ -194,8 +194,9 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
                         onPressed: () async {
                           Navigator.pop(ctx);
                           await ApiService.activarUsuario(id!);
-                          if (mounted)
+                          if (mounted) {
                             _snack('Usuario activado', success: true);
+                          }
                           _cargarUsuarios();
                         },
                         icon: const Icon(Icons.person, size: 20),

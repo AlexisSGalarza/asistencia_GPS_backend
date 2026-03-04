@@ -173,7 +173,7 @@ class _HistorialEquipoScreenState extends State<HistorialEquipoScreen> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<int?>(
-                  value: _maestroFiltro,
+                  initialValue: _maestroFiltro,
                   decoration: InputDecoration(
                     labelText: 'Maestro',
                     isDense: true,
@@ -210,7 +210,7 @@ class _HistorialEquipoScreenState extends State<HistorialEquipoScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: DropdownButtonFormField<String?>(
-                  value: _tipoFiltro,
+                  initialValue: _tipoFiltro,
                   decoration: InputDecoration(
                     labelText: 'Tipo',
                     isDense: true,
@@ -249,7 +249,7 @@ class _HistorialEquipoScreenState extends State<HistorialEquipoScreen> {
           const SizedBox(height: 8),
           // Fila 2: Estado
           DropdownButtonFormField<bool?>(
-            value: _estadoFiltro,
+            initialValue: _estadoFiltro,
             decoration: InputDecoration(
               labelText: 'Estado',
               isDense: true,

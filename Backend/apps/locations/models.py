@@ -102,6 +102,7 @@ class Incidencia(models.Model):
         RETARDO = 'retardo', 'Retardo'
         JUSTIFICACION = 'justificacion', 'Justificación'
         SALIDA_TEMPRANA = 'salida_temprana', 'Salida Temprana'
+        OLVIDO_SALIDA = 'olvido_salida', 'Olvidó marcar salida'
 
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='incidencias')
     asistencia = models.ForeignKey(

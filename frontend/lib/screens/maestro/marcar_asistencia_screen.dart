@@ -47,21 +47,21 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
   void initState() {
     super.initState();
     _actualizarReloj();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _actualizarReloj();
-    });
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _actualizarReloj(),
+    );
     _cargarPerimetro();
     _obtenerUbicacion();
     _cargarEstadoHoy();
-    _cargarRedesYDetectarWifi();
+    _detectarWifi();
   }
 
-  /// Carga el perímetro activo desde el backend.
+  /// Carga el perímetro activo y recalcula distancia si ya hay GPS.
   Future<void> _cargarPerimetro() async {
     try {
       final perimetros = await ApiService.getPerimetros();
       if (!mounted) return;
-      // Buscar el primer perímetro activo
       final activos = perimetros.where((p) => p['activo'] == true).toList();
       if (activos.isNotEmpty) {
         final p = activos.first;
@@ -73,39 +73,29 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
           setState(() {
             _centroCampus = LatLng(lat, lng);
             _radioPerimetro = radio;
-
-            // Recalcular distancia si ya tenemos ubicación
             if (_ubicacionActual != null) {
               final distancia = const Distance().as(
                 LengthUnit.Meter,
                 _ubicacionActual!,
                 _centroCampus!,
               );
-              _dentroDelPerimetro =
-                  distancia <= (_radioPerimetro + 35); // Tolerancia de 35m
+              _dentroDelPerimetro = distancia <= (_radioPerimetro + 35);
             }
           });
         }
       }
-    } catch (_) {
-      // Ignorar errores, mantendrá los valores por defecto o el último conocido
-    }
+    } catch (_) {}
   }
 
-  /// Carga las redes autorizadas y luego detecta la WiFi actual.
-  Future<void> _cargarRedesYDetectarWifi() async {
-    await _detectarWifi();
-  }
-
-  /// Detecta la red Wi-Fi actual y la guarda para enviar al servidor.
-  /// La validación de si está autorizada la hace el backend.
+  /// Lee SSID/BSSID del dispositivo y los guarda para enviarlos al servidor.
+  /// La validación de si la red es autorizada la hace el backend.
   Future<void> _detectarWifi() async {
     setState(() {
       _cargandoWifi = true;
       _errorWifi = null;
     });
 
-    // En emulador no hay WiFi real → se omite para pruebas
+    // En emulador no hay hardware WiFi
     if (ApiService.isEmulador) {
       setState(() {
         _wifiSSID = 'EMULADOR';
@@ -116,7 +106,7 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
     }
 
     try {
-      // Permiso de ubicación requerido para leer WiFi en Android 8+
+      // Android 8+ requiere permiso de ubicación para leer el SSID
       final locationStatus = await Permission.location.request();
       if (!locationStatus.isGranted) {
         setState(() {
@@ -130,7 +120,7 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
       String? ssid = await info.getWifiName();
       String? bssid = await info.getWifiBSSID();
 
-      // Limpiar comillas del SSID (Android lo envuelve en comillas)
+      // Android envuelve el SSID en comillas, hay que limpiarlas
       ssid = ssid?.replaceAll('"', '').trim() ?? '';
       bssid = bssid?.trim().toUpperCase() ?? '';
 
@@ -161,9 +151,7 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
         _entradaRegistrada = estado['entrada_registrada'] == true;
         _salidaRegistrada = estado['salida_registrada'] == true;
       });
-    } catch (_) {
-      // Si falla la consulta, se queda en el estado por defecto
-    }
+    } catch (_) {}
   }
 
   void _actualizarReloj() {
@@ -213,7 +201,6 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
     });
 
     try {
-      // Verificar si el servicio de ubicación está habilitado
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         setState(() {
@@ -223,7 +210,6 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
         return;
       }
 
-      // Verificar y solicitar permisos
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -244,7 +230,6 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
         return;
       }
 
-      // Obtener posición actual con timeout
       Position position =
           await Geolocator.getCurrentPosition(
             locationSettings: const LocationSettings(
@@ -260,34 +245,24 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
 
       final nuevaUbicacion = LatLng(position.latitude, position.longitude);
 
-      // Imprimir coordenadas en la consola para depuración
-      print('=== COORDENADAS GPS OBTENIDAS ===');
-      print('Latitud: ${nuevaUbicacion.latitude}');
-      print('Longitud: ${nuevaUbicacion.longitude}');
-      print('=================================');
-
-      // Calcular si está dentro del perímetro (si ya se cargó)
+      // Calcular si está dentro del perímetro (tolerancia de 35m sobre el radio)
       double distancia = 0;
-      bool dentro =
-          true; // Por defecto asumimos verdadero hasta que se cargue el centro
+      bool dentro = true;
       if (_centroCampus != null) {
         distancia = const Distance().as(
           LengthUnit.Meter,
           nuevaUbicacion,
           _centroCampus!,
         );
-        dentro =
-            distancia <= (_radioPerimetro + 35); // 35m de tolerancia visual
+        dentro = distancia <= (_radioPerimetro + 35);
       }
 
       setState(() {
         _ubicacionActual = nuevaUbicacion;
         _cargandoUbicacion = false;
-        // Agregamos 30m de tolerancia al igual que en el backend
         _dentroDelPerimetro = dentro;
       });
 
-      // Centrar mapa solo cuando ya está construido
       if (_mapaListo) {
         _mapController.move(nuevaUbicacion, 17.0);
       }
@@ -917,13 +892,10 @@ class _MarcarAsistenciaScreenState extends State<MarcarAsistenciaScreen> {
   // ---------- Botones de registro ----------
   Widget _buildBotones(Size size) {
     // Entrada activa si: tiene ubicación Y no ha registrado entrada (WiFi la valida el servidor)
-    final bool entradaActiva =
-        _ubicacionActual != null && !_entradaRegistrada;
+    final bool entradaActiva = _ubicacionActual != null && !_entradaRegistrada;
     // Salida activa si: tiene ubicación Y ya registró entrada Y no ha registrado salida
     final bool salidaActiva =
-        _ubicacionActual != null &&
-        _entradaRegistrada &&
-        !_salidaRegistrada;
+        _ubicacionActual != null && _entradaRegistrada && !_salidaRegistrada;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 30),

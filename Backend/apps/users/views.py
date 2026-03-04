@@ -3,8 +3,11 @@ from rest_framework.response import Response
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
+from rest_framework.throttling import AnonRateThrottle
 from django.core.cache import cache
 from django.core.mail import send_mail
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.conf import settings as django_settings
 import random
 import string
@@ -20,6 +23,20 @@ from .serializers import (
 
 
 # ──────────────────────────────────────────────
+# Throttles personalizados
+# ──────────────────────────────────────────────
+
+class LoginRateThrottle(AnonRateThrottle):
+    """Máx 10 intentos de login por IP por minuto."""
+    scope = 'login'
+
+
+class RecuperacionRateThrottle(AnonRateThrottle):
+    """Máx 5 solicitudes de recuperación por IP por minuto."""
+    scope = 'recuperacion'
+
+
+# ──────────────────────────────────────────────
 # AUTH ENDPOINTS
 # ──────────────────────────────────────────────
 
@@ -30,6 +47,7 @@ class LoginView(APIView):
     """
     permission_classes = [AllowAny]
     authentication_classes = []  # No requiere autenticación
+    throttle_classes = [LoginRateThrottle]  # Máx 10 intentos/min por IP
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -87,8 +105,36 @@ class PerfilView(APIView):
 
     def put(self, request):
         usuario = request.usuario
-        usuario.nombre = request.data.get('nombre', usuario.nombre)
-        usuario.correo = request.data.get('correo', usuario.correo)
+        nuevo_nombre = request.data.get('nombre', usuario.nombre)
+        nuevo_correo = request.data.get('correo', usuario.correo)
+
+        # Validar nombre
+        if not nuevo_nombre or len(str(nuevo_nombre).strip()) < 2:
+            return Response(
+                {'nombre': 'El nombre debe tener al menos 2 caracteres.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validar formato de correo
+        try:
+            validate_email(nuevo_correo)
+        except DjangoValidationError:
+            return Response(
+                {'correo': 'Correo electrónico no válido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Verificar unicidad del correo si cambió
+        nuevo_correo = nuevo_correo.strip().lower()
+        if nuevo_correo != usuario.correo.lower():
+            if Usuario.objects.filter(correo__iexact=nuevo_correo).exclude(id=usuario.id).exists():
+                return Response(
+                    {'correo': 'Este correo ya está en uso por otra cuenta.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        usuario.nombre = str(nuevo_nombre).strip()
+        usuario.correo = nuevo_correo
         usuario.save()
         return Response(UsuarioSerializer(usuario).data)
 
@@ -117,10 +163,11 @@ class SolicitarRecuperacionView(APIView):
     """
     POST /api/auth/recuperar/solicitar/
     Recibe un correo. Si existe, genera un código de 6 dígitos
-    válido por 15 minutos y lo devuelve (en producción se enviaría por email).
+    válido por 15 minutos y lo envía por email.
     """
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [RecuperacionRateThrottle]  # Máx 5 solicitudes/min por IP
 
     def post(self, request):
         correo = request.data.get('correo', '').strip().lower()
@@ -128,6 +175,13 @@ class SolicitarRecuperacionView(APIView):
             return Response(
                 {'error': 'Se requiere el correo electrónico.'},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Bloquear si ya hay un código válido reciente (cooldown de 60s por correo)
+        cooldown_key = f'recovery_cooldown_{correo}'
+        if cache.get(cooldown_key):
+            return Response(
+                {'mensaje': 'Si el correo está registrado, recibirás un código de recuperación.'},
             )
 
         try:
@@ -148,6 +202,9 @@ class SolicitarRecuperacionView(APIView):
             'usuario_id': usuario.id,
             'intentos': 0,
         }, timeout=900)  # 15 min
+
+        # Cooldown de 60s para no reenviar continuamente
+        cache.set(cooldown_key, True, timeout=60)
 
         # Enviar el código por correo electrónico
         asunto = 'Código de recuperación de contraseña - Asistencia GPS'

@@ -469,7 +469,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen>
             child: done
                 ? const Icon(
                     Icons.check_rounded,
-                    color: const Color(0xFF6B2D8B),
+                    color: Color(0xFF6B2D8B),
                     size: 18,
                   )
                 : Text(

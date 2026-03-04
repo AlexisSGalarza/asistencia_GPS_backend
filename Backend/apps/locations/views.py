@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from django.utils import timezone
+from django.db.models import Prefetch
 from datetime import date, timedelta, datetime, time
 
 from common.permissions import EsAdministrador, EsSupervisorOAdmin, EsUsuarioAutenticado
@@ -21,6 +22,27 @@ TOLERANCIA_RETARDO_MIN = 10
 TOLERANCIA_SALIDA_TEMPRANA_MIN = 15
 # Horas después de la entrada para auto-registrar salida
 AUTO_SALIDA_HORAS = 12
+
+
+def _rango_dia_mx(fecha):
+    """
+    Convierte una fecha en hora México (date o 'YYYY-MM-DD') a un rango
+    (inicio_utc, fin_utc) para filtrar DateTimeField de forma correcta.
+
+    Por qué es necesario:
+    PostgreSQL almacena los timestamps en UTC.  Cuando un maestro marca
+    a las 19:00 hora México CST (UTC-6) se guarda como 01:00 UTC del DÍA
+    SIGUIENTE.  Filtrar con fecha_hora__date=hoy_mexico compara la fecha
+    UTC del registro contra la fecha México → no coincide → el sistema no
+    encuentra la entrada y la validación de 12 h falla.
+    """
+    if isinstance(fecha, str):
+        from datetime import date as _d
+        fecha = _d.fromisoformat(fecha)
+    tz_mx = timezone.get_current_timezone()  # America/Mexico_City
+    inicio = timezone.make_aware(datetime.combine(fecha, time.min), tz_mx)
+    fin    = timezone.make_aware(datetime.combine(fecha, time.max), tz_mx)
+    return inicio, fin
 
 
 # ──────────────────────────────────────────────
@@ -117,13 +139,14 @@ class RegistrarAsistenciaView(APIView):
     def _validar_entrada(self, usuario, horario, hora_actual, fecha_hoy, asistencia=None):
         """
         Compara la hora de marcado contra hora_entrada del horario.
-        Si llega después de hora_entrada + tolerancia → crea incidencia de retardo.
+        Si llega después de hora_entrada + tolerancia → crea/actualiza incidencia de retardo.
         """
         hora_limite = self._sumar_minutos(horario.hora_entrada, TOLERANCIA_RETARDO_MIN)
 
         if hora_actual > hora_limite:
             minutos = self._diferencia_minutos(horario.hora_entrada, hora_actual)
-            incidencia, _ = Incidencia.objects.get_or_create(
+            # update_or_create: si ya existe la incidencia actualiza la FK asistencia
+            incidencia, _ = Incidencia.objects.update_or_create(
                 usuario=usuario,
                 tipo=Incidencia.Tipo.RETARDO,
                 fecha=fecha_hoy,
@@ -143,13 +166,14 @@ class RegistrarAsistenciaView(APIView):
     def _validar_salida(self, usuario, horario, hora_actual, fecha_hoy, asistencia=None):
         """
         Compara la hora de marcado contra hora_salida del horario.
-        Si sale antes de hora_salida - tolerancia → crea incidencia de salida temprana.
+        Si sale antes de hora_salida - tolerancia → crea/actualiza incidencia de salida temprana.
         """
         hora_limite = self._restar_minutos(horario.hora_salida, TOLERANCIA_SALIDA_TEMPRANA_MIN)
 
         if hora_actual < hora_limite:
             minutos = self._diferencia_minutos(hora_actual, horario.hora_salida)
-            incidencia, _ = Incidencia.objects.get_or_create(
+            # update_or_create: si ya existe la incidencia actualiza la FK asistencia
+            incidencia, _ = Incidencia.objects.update_or_create(
                 usuario=usuario,
                 tipo=Incidencia.Tipo.SALIDA_TEMPRANA,
                 fecha=fecha_hoy,
@@ -168,18 +192,19 @@ class RegistrarAsistenciaView(APIView):
 
     def _sumar_minutos(self, hora, minutos):
         """Suma minutos a un objeto time."""
-        dt = datetime.combine(date.today(), hora) + timedelta(minutes=minutos)
+        dt = datetime.combine(timezone.localtime().date(), hora) + timedelta(minutes=minutos)
         return dt.time()
 
     def _restar_minutos(self, hora, minutos):
         """Resta minutos a un objeto time."""
-        dt = datetime.combine(date.today(), hora) - timedelta(minutes=minutos)
+        dt = datetime.combine(timezone.localtime().date(), hora) - timedelta(minutes=minutos)
         return dt.time()
 
     def _diferencia_minutos(self, hora_menor, hora_mayor):
         """Calcula la diferencia en minutos entre dos objetos time."""
-        dt1 = datetime.combine(date.today(), hora_menor)
-        dt2 = datetime.combine(date.today(), hora_mayor)
+        hoy_mx = timezone.localtime().date()
+        dt1 = datetime.combine(hoy_mx, hora_menor)
+        dt2 = datetime.combine(hoy_mx, hora_mayor)
         return int((dt2 - dt1).total_seconds() / 60)
 
 
@@ -191,29 +216,33 @@ class EstadoAsistenciaHoyView(APIView):
     """
     GET /api/asistencia/estado-hoy/
     Devuelve el estado de asistencia del usuario para el día actual.
-    Incluye auto-salida si la entrada tiene más de AUTO_SALIDA_HORAS.
+    Incluye auto-salida (fallback) si la entrada tiene más de AUTO_SALIDA_HORAS
+    y aún no hay salida (el cron medianoche es la fuente principal).
     """
     permission_classes = [EsUsuarioAutenticado]
 
     def get(self, request):
         usuario = request.usuario
         hoy = timezone.localtime().date()
+        inicio_dia, fin_dia = _rango_dia_mx(hoy)
 
         entrada = Asistencia.objects.filter(
             usuario=usuario,
             tipo=Asistencia.Tipo.ENTRADA,
-            fecha_hora__date=hoy,
+            fecha_hora__gte=inicio_dia,
+            fecha_hora__lte=fin_dia,
             valido=True,
         ).first()
 
         salida = Asistencia.objects.filter(
             usuario=usuario,
             tipo=Asistencia.Tipo.SALIDA,
-            fecha_hora__date=hoy,
+            fecha_hora__gte=inicio_dia,
+            fecha_hora__lte=fin_dia,
             valido=True,
         ).first()
 
-        # ── Auto-salida: si la entrada tiene más de AUTO_SALIDA_HORAS y no hay salida ──
+        # ── Auto-salida (fallback): si la entrada tiene más de AUTO_SALIDA_HORAS y no hay salida ──
         if entrada and not salida:
             ahora = timezone.localtime()
             horas_transcurridas = (ahora - entrada.fecha_hora).total_seconds() / 3600
@@ -228,12 +257,13 @@ class EstadoAsistenciaHoyView(APIView):
                     valido=True,
                     distancia_metros=entrada.distancia_metros,
                 )
-                # Crear incidencia de salida automática
-                Incidencia.objects.get_or_create(
+                # Crear/actualizar incidencia de salida automática
+                Incidencia.objects.update_or_create(
                     usuario=usuario,
-                    tipo=Incidencia.Tipo.SALIDA_TEMPRANA,
+                    tipo=Incidencia.Tipo.OLVIDO_SALIDA,
                     fecha=hoy,
                     defaults={
+                        'asistencia': salida,
                         'descripcion': (
                             f'Salida automática registrada por el sistema. '
                             f'Pasaron {int(horas_transcurridas)} horas desde la entrada '
@@ -266,16 +296,18 @@ class HistorialAsistenciaView(APIView):
     def get(self, request):
         asistencias = Asistencia.objects.filter(
             usuario=request.usuario,
-        ).select_related('perimetro')
+        ).select_related('perimetro', 'usuario')
 
         # Filtros opcionales por fecha
         fecha_inicio = request.query_params.get('fecha_inicio')
         fecha_fin = request.query_params.get('fecha_fin')
 
         if fecha_inicio:
-            asistencias = asistencias.filter(fecha_hora__date__gte=fecha_inicio)
+            inicio_utc, _ = _rango_dia_mx(fecha_inicio)
+            asistencias = asistencias.filter(fecha_hora__gte=inicio_utc)
         if fecha_fin:
-            asistencias = asistencias.filter(fecha_hora__date__lte=fecha_fin)
+            _, fin_utc = _rango_dia_mx(fecha_fin)
+            asistencias = asistencias.filter(fecha_hora__lte=fin_utc)
 
         serializer = AsistenciaSerializer(asistencias, many=True)
         return Response(serializer.data)
@@ -294,28 +326,40 @@ class PanelSupervisionView(APIView):
     permission_classes = [EsSupervisorOAdmin]
 
     def get(self, request):
-        fecha = request.query_params.get('fecha', str(date.today()))
+        fecha = request.query_params.get('fecha', str(timezone.localtime().date()))
+        inicio_panel, fin_panel = _rango_dia_mx(fecha)
 
-        # Todos los maestros activos
+        # Todos los maestros activos — con prefetch para evitar N+1
         maestros = Usuario.objects.filter(
             rol__nombre=Rol.Nombre.MAESTRO,
             activo=True,
-        ).select_related('rol')
+        ).select_related('rol').prefetch_related(
+            Prefetch(
+                'asistencias',
+                queryset=Asistencia.objects.filter(
+                    fecha_hora__gte=inicio_panel,
+                    fecha_hora__lte=fin_panel,
+                ).order_by('fecha_hora'),
+                to_attr='asistencias_hoy',
+            ),
+            Prefetch(
+                'incidencias',
+                queryset=Incidencia.objects.filter(fecha=fecha),
+                to_attr='incidencias_hoy',
+            ),
+        )
 
         resultado = []
         for maestro in maestros:
-            asistencias_hoy = Asistencia.objects.filter(
-                usuario=maestro,
-                fecha_hora__date=fecha,
-            ).order_by('fecha_hora')
+            asistencias_hoy = maestro.asistencias_hoy
 
-            entrada = asistencias_hoy.filter(tipo=Asistencia.Tipo.ENTRADA).first()
-            salida = asistencias_hoy.filter(tipo=Asistencia.Tipo.SALIDA).last()
-
-            incidencias_hoy = Incidencia.objects.filter(
-                usuario=maestro,
-                fecha=fecha,
+            entrada = next(
+                (a for a in asistencias_hoy if a.tipo == Asistencia.Tipo.ENTRADA), None
             )
+            salida = next(
+                (a for a in reversed(asistencias_hoy) if a.tipo == Asistencia.Tipo.SALIDA), None
+            )
+            incidencias_hoy = maestro.incidencias_hoy
 
             resultado.append({
                 'maestro': {
@@ -375,9 +419,11 @@ class AsistenciaViewSet(viewsets.ReadOnlyModelViewSet):
         if usuario_id:
             qs = qs.filter(usuario_id=usuario_id)
         if fecha_inicio:
-            qs = qs.filter(fecha_hora__date__gte=fecha_inicio)
+            inicio_utc, _ = _rango_dia_mx(fecha_inicio)
+            qs = qs.filter(fecha_hora__gte=inicio_utc)
         if fecha_fin:
-            qs = qs.filter(fecha_hora__date__lte=fecha_fin)
+            _, fin_utc = _rango_dia_mx(fecha_fin)
+            qs = qs.filter(fecha_hora__lte=fin_utc)
         if solo_validos is not None:
             qs = qs.filter(valido=solo_validos.lower() == 'true')
         if tipo:

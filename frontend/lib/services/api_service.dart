@@ -5,18 +5,15 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Servicio centralizado para comunicarse con el backend Django.
 class ApiService {
-  // ─────────────────────────────────────────
-  // 🔧 CONFIGURACIÓN DE ENTORNO
-  // Cambia _entorno según donde quieras conectarte:
-  //   Entorno.emulador  → Android Studio emulator (10.0.2.2)
-  //   Entorno.local     → Celular real en tu red WiFi
-  //   Entorno.railway   → Servidor en producción
-  // ─────────────────────────────────────────
+  // ─── ENTORNO ───
+  // emulador → Android Studio (10.0.2.2:8000)
+  // local    → Celular real en WiFi (usa _ipLocal)
+  // railway  → Producción
   static const _Entorno _entorno = _Entorno.railway;
 
-  static const String _ipLocal = '192.168.1.100'; // Tu IP en la red WiFi
+  static const String _ipLocal = '192.168.1.100';
   static const String _urlRailway =
-      'https://asistenciagps-production.up.railway.app'; // URL de Railway
+      'https://asistenciagps-production.up.railway.app';
 
   static String get _baseUrl {
     switch (_entorno) {
@@ -375,10 +372,12 @@ class ApiService {
     final params = <String>[];
     if (usuarioId != null) params.add('usuario=$usuarioId');
     if (fecha != null && fecha.isNotEmpty) params.add('fecha=$fecha');
-    if (fechaInicio != null && fechaInicio.isNotEmpty)
+    if (fechaInicio != null && fechaInicio.isNotEmpty) {
       params.add('fecha_inicio=$fechaInicio');
-    if (fechaFin != null && fechaFin.isNotEmpty)
+    }
+    if (fechaFin != null && fechaFin.isNotEmpty) {
       params.add('fecha_fin=$fechaFin');
+    }
     if (tipo != null && tipo.isNotEmpty) params.add('tipo=$tipo');
     String path = '/asistencia/incidencias/';
     if (params.isNotEmpty) path += '?${params.join("&")}';
