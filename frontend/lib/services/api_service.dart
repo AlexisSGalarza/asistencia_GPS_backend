@@ -700,12 +700,7 @@ class ApiService {
     }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return jsonDecode(response.body);
-    }
-    if (response.body.isNotEmpty) {
-      try {
-        return jsonDecode(response.body);
-      } catch (_) {}
+      return response.body.isEmpty ? {} : jsonDecode(response.body);
     }
     return null;
   }
@@ -732,12 +727,7 @@ class ApiService {
     }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return jsonDecode(response.body);
-    }
-    if (response.body.isNotEmpty) {
-      try {
-        return jsonDecode(response.body);
-      } catch (_) {}
+      return response.body.isEmpty ? {} : jsonDecode(response.body);
     }
     return null;
   }

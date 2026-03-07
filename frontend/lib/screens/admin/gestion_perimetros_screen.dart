@@ -99,8 +99,8 @@ class _GestionPerimetrosScreenState extends State<GestionPerimetrosScreen> {
 
     final data = {
       'nombre': _nombreCtrl.text.trim(),
-      'latitud': lat.toString(),
-      'longitud': lng.toString(),
+      'latitud': lat!.toStringAsFixed(6),
+      'longitud': lng!.toStringAsFixed(6),
       'radio_metros': radio,
       'activo': true,
     };
