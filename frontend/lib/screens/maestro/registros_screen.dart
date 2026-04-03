@@ -15,10 +15,16 @@ class RegistrosScreen extends StatefulWidget {
 
 class _RegistrosScreenState extends State<RegistrosScreen> {
   List<Map<String, dynamic>> _registros = [];
+  List<Map<String, dynamic>> _registrosFiltrados = [];
   bool _isLoading = true;
   int _asistencias = 0;
   int _retardos = 0;
   int _faltas = 0;
+
+  // Filtros
+  String? _filtroSemana; // null = todas, 'esta', 'pasada'
+  String?
+  _filtroTipo; // null = todas, o 'Completo','Falta','Retardo','Salida Temprana','Olvidó Salida'
 
   @override
   void initState() {
@@ -104,6 +110,22 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
         }
       }
 
+      // Agregar días con falta pero sin asistencia registrada
+      for (final inc in incidencias) {
+        if (inc['tipo'] != 'falta') continue; // solo faltas sin entrada
+        final fecha = inc['fecha']?.toString() ?? '';
+        if (fecha.isEmpty) continue;
+        if (!porFecha.containsKey(fecha)) {
+          porFecha[fecha] = {
+            'fechaKey': fecha,
+            'fecha': fecha,
+            'entrada': '--:--',
+            'salida': '--:--',
+            'estado': 'Falta',
+          };
+        }
+      }
+
       // Ordenar por fecha descendente ANTES de formatear
       final sortedKeys = porFecha.keys.toList()..sort((a, b) => b.compareTo(a));
 
@@ -142,6 +164,9 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
       if (mounted) {
         setState(() {
           _registros = registros;
+          _registrosFiltrados = List.from(
+            registros,
+          ); // sin filtros inicialmente
           _asistencias = asistencias;
           _retardos = retardos;
           _faltas = faltas;
@@ -153,6 +178,47 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _aplicarFiltros() {
+    List<Map<String, dynamic>> resultado = List.from(_registros);
+
+    // Filtro por semana
+    if (_filtroSemana != null) {
+      final ahora = DateTime.now();
+      final inicioSemana = ahora.subtract(Duration(days: ahora.weekday - 1));
+      DateTime desde;
+      DateTime hasta;
+      if (_filtroSemana == 'esta') {
+        desde = DateTime(
+          inicioSemana.year,
+          inicioSemana.month,
+          inicioSemana.day,
+        );
+        hasta = desde.add(const Duration(days: 6));
+      } else {
+        desde = DateTime(
+          inicioSemana.year,
+          inicioSemana.month,
+          inicioSemana.day,
+        ).subtract(const Duration(days: 7));
+        hasta = desde.add(const Duration(days: 6));
+      }
+      resultado = resultado.where((r) {
+        final key = r['fechaKey']?.toString() ?? '';
+        if (key.isEmpty) return false;
+        final fecha = DateTime.tryParse(key);
+        if (fecha == null) return false;
+        return !fecha.isBefore(desde) && !fecha.isAfter(hasta);
+      }).toList();
+    }
+
+    // Filtro por tipo de estado
+    if (_filtroTipo != null) {
+      resultado = resultado.where((r) => r['estado'] == _filtroTipo).toList();
+    }
+
+    setState(() => _registrosFiltrados = resultado);
   }
 
   @override
@@ -180,21 +246,24 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
                       child: Column(
                         children: [
                           _buildResumenAsistencia(),
-                          const SizedBox(height: 15),
-                          if (_registros.isEmpty)
+                          const SizedBox(height: 10),
+                          _buildFiltros(),
+                          const SizedBox(height: 10),
+                          if (_registrosFiltrados.isEmpty)
                             const Padding(
                               padding: EdgeInsets.all(40),
                               child: Text(
-                                'No hay registros aún',
+                                'No hay registros para los filtros seleccionados',
+                                textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontFamily: 'Merriweather',
-                                  fontSize: 16,
+                                  fontSize: 14,
                                   color: Color(0xFF757575),
                                 ),
                               ),
                             )
                           else
-                            ..._registros.asMap().entries.map(
+                            ..._registrosFiltrados.asMap().entries.map(
                               (e) => AnimatedListItem(
                                 index: e.key,
                                 child: _buildRegistroCard(e.value),
@@ -209,6 +278,145 @@ class _RegistrosScreenState extends State<RegistrosScreen> {
         ),
       ),
       bottomNavigationBar: _buildBottomNav(context),
+    );
+  }
+
+  // ---------- Filtros ----------
+  Widget _buildFiltros() {
+    const semanas = [
+      (label: 'Todas', val: null),
+      (label: 'Esta semana', val: 'esta'),
+      (label: 'Sem. pasada', val: 'pasada'),
+    ];
+    const tipos = [
+      (label: 'Todos', val: null),
+      (label: 'Asistencia', val: 'Completo'),
+      (label: 'Falta', val: 'Falta'),
+      (label: 'Retardo', val: 'Retardo'),
+      (label: 'S. Temprana', val: 'Salida Temprana'),
+      (label: 'Olvidó Salida', val: 'Olvidó Salida'),
+    ];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.08),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Período',
+            style: TextStyle(
+              fontFamily: 'Merriweather',
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF757575),
+            ),
+          ),
+          const SizedBox(height: 6),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: semanas.map((s) {
+                final selected = _filtroSemana == s.val;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() => _filtroSemana = s.val);
+                      _aplicarFiltros();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? const Color(0xFF6B2D8B)
+                            : const Color(0xFFF1E9F8),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        s.label,
+                        style: TextStyle(
+                          fontFamily: 'Merriweather',
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: selected
+                              ? Colors.white
+                              : const Color(0xFF6B2D8B),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Tipo',
+            style: TextStyle(
+              fontFamily: 'Merriweather',
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF757575),
+            ),
+          ),
+          const SizedBox(height: 6),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: tipos.map((t) {
+                final selected = _filtroTipo == t.val;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() => _filtroTipo = t.val);
+                      _aplicarFiltros();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? const Color(0xFF6B2D8B)
+                            : const Color(0xFFF1E9F8),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        t.label,
+                        style: TextStyle(
+                          fontFamily: 'Merriweather',
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: selected
+                              ? Colors.white
+                              : const Color(0xFF6B2D8B),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

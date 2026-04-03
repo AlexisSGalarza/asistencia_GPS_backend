@@ -3,13 +3,8 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Servicio centralizado para comunicarse con el backend Django.
 class ApiService {
-  // ─── ENTORNO ───
-  // emulador → Android Studio (10.0.2.2:8000)
-  // local    → Celular real en WiFi (usa _ipLocal)
-  // railway  → Producción
-  static const _Entorno _entorno = _Entorno.railway;
+  static const _Entorno _entorno = _Entorno.emulador;
 
   static const String _ipLocal = '192.168.1.100';
   static const String _urlRailway =
@@ -233,15 +228,6 @@ class ApiService {
 
   // ─── PERFIL ───
 
-  /// Obtener perfil del usuario autenticado.
-  static Future<Map<String, dynamic>> getPerfil() async {
-    final response = await _getAuth('/auth/perfil/');
-    if (response != null) {
-      _usuarioData = response;
-    }
-    return response ?? {};
-  }
-
   /// Cambiar contraseña.
   static Future<Map<String, dynamic>> cambiarPassword(
     String passwordActual,
@@ -386,17 +372,6 @@ class ApiService {
     if (response is List) return response;
     if (response is Map && response.containsKey('results')) {
       return response['results'] as List;
-    }
-    return [];
-  }
-
-  // ─── REDES AUTORIZADAS ───
-
-  /// Obtener lista de redes Wi-Fi autorizadas activas.
-  static Future<List<dynamic>> getRedesActivas() async {
-    final response = await _getAuth('/asistencia/redes-activas/');
-    if (response is List) {
-      return response;
     }
     return [];
   }
