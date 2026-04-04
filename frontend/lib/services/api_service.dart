@@ -2,27 +2,28 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiService {
-  static const _Entorno _entorno = _Entorno.emulador;
-
-  static const String _ipLocal = '192.168.1.100';
-  static const String _urlRailway =
-      'https://asistenciagps-production.up.railway.app';
+  static String get _entorno => dotenv.get('ENTORNO', fallback: 'emulador');
+  static String get _ipLocal => dotenv.get('IP_LOCAL', fallback: '');
+  static String get _urlRailway => dotenv.get('URL_RAILWAY', fallback: '');
 
   static String get _baseUrl {
     switch (_entorno) {
-      case _Entorno.emulador:
+      case 'emulador':
         return 'http://10.0.2.2:8000/api';
-      case _Entorno.local:
+      case 'local':
         return 'http://$_ipLocal:8000/api';
-      case _Entorno.railway:
+      case 'railway':
         return '$_urlRailway/api';
+      default:
+        return 'http://10.0.2.2:8000/api';
     }
   }
 
   /// True cuando el entorno es emulador (sin WiFi real).
-  static bool get isEmulador => _entorno == _Entorno.emulador;
+  static bool get isEmulador => _entorno == 'emulador';
 
   static String? _accessToken;
   static String? _refreshToken;
@@ -729,5 +730,3 @@ class ApiService {
     return null;
   }
 }
-
-enum _Entorno { emulador, local, railway }

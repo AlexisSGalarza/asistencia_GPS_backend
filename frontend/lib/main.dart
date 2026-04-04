@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/splash/logo.dart';
 import 'screens/login/login_screen.dart';
 import 'screens/maestro/marcar_asistencia_screen.dart';
@@ -12,7 +13,9 @@ import 'screens/supervisor/gestion_incidencias_screen.dart';
 import 'screens/supervisor/historial_equipo_screen.dart';
 import 'screens/supervisor/visualizador_reportes_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
   runApp(const MyApp());
 }
 
