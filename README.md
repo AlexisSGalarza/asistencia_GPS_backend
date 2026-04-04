@@ -8,8 +8,7 @@ Sistema de control de asistencia para maestros basado en geolocalización y red 
 |------|-----------|
 | Backend | Django 6 + Django REST Framework + JWT |
 | Base de datos | PostgreSQL |
-| Frontend | Flutter 3 |
-| Despliegue | Railway (backend) |
+| Despliegue | Railway |
 
 ---
 
@@ -29,18 +28,12 @@ Sistema de control de asistencia para maestros basado en geolocalización y red 
 
 ```
 asistencia_GPS/
-├── Backend/          # API Django REST
-│   ├── apps/
-│   │   ├── users/    # Usuarios, roles, horarios
-│   │   └── locations/# Perímetros, asistencias, incidencias, redes Wi-Fi
-│   ├── common/       # Autenticación JWT, permisos, reportes PDF
-│   └── config/       # Settings, URLs, WSGI/ASGI
-└── frontend/         # App Flutter
-    └── lib/
-        └── screens/
-            ├── admin/      # Dashboard, usuarios, perímetros, horarios, reportes
-            ├── supervisor/ # Vista de supervisión
-            └── maestro/    # Marcar asistencia, registros, perfil, horario
+└── Backend/          # API Django REST
+    ├── apps/
+    │   ├── users/    # Usuarios, roles, horarios
+    │   └── locations/# Perímetros, asistencias, incidencias, redes Wi-Fi
+    ├── common/       # Autenticación JWT, permisos, reportes PDF
+    └── config/       # Settings, URLs, WSGI/ASGI
 ```
 
 ---
@@ -49,7 +42,6 @@ asistencia_GPS/
 
 - Python ≥ 3.11
 - PostgreSQL
-- Flutter SDK ≥ 3.10
 
 ---
 
@@ -98,18 +90,6 @@ python manage.py runserver
 ```
 
 La API queda disponible en `http://localhost:8000/`.
-
----
-
-## Configuración del frontend
-
-```bash
-cd frontend
-flutter pub get
-flutter run
-```
-
-Asegúrate de que la URL base de la API en `lib/services/` apunte a `http://localhost:8000` (desarrollo) o a tu dominio de Railway (producción).
 
 ---
 
