@@ -2,4 +2,16 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "python manage.py migrate --no-input && python manage.py crear_admin; gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"
+startCommand = "python manage.py migrate --no-input && python manage.py crear_admin && python manage.py generar_faltas; gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"
+
+# ── Cron 1: auto-salidas ────────────────────────────────────────────────────
+# Crea un servicio separado en Railway (mismo repo) con:
+#   Custom Start Command: python manage.py auto_salidas
+#   Cron Schedule:        0 6 * * *   (06:00 UTC = 00:00 CST México)
+#   Root Directory:       Backend
+#
+# ── Cron 2: generar-faltas ──────────────────────────────────────────────────
+# Crea un segundo servicio CRON en Railway con:
+#   Custom Start Command: python manage.py generar_faltas
+#   Cron Schedule:        5 6 * * *   (06:05 UTC = 00:05 CST México, corre justo después)
+#   Root Directory:       Backend

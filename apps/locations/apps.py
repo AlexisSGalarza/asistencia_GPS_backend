@@ -23,12 +23,17 @@ class LocationsConfig(AppConfig):
         if comando == 'runserver' and not os.environ.get('RUN_MAIN'):
             return
 
-        try:
-            from django.core.management import call_command
-            call_command('generar_faltas', verbosity=1)
-        except Exception as e:
-            # No detener el servidor si el comando falla (BD no disponible aún, etc.)
-            import logging
-            logging.getLogger(__name__).warning(
-                'generar_faltas no pudo ejecutarse al arrancar: %s', e
-            )
+        import threading
+
+        def _ejecutar_generar_faltas():
+            try:
+                from django.core.management import call_command
+                call_command('generar_faltas', verbosity=1)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(
+                    'generar_faltas no pudo ejecutarse al arrancar: %s', e
+                )
+
+        t = threading.Thread(target=_ejecutar_generar_faltas, daemon=True)
+        t.start()
