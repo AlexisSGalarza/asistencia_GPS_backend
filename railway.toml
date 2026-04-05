@@ -2,27 +2,9 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "python manage.py migrate --no-input && python manage.py crear_admin; gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"
-
-# ════════════════════════════════════════════════════════════════════════════
-# SERVICIOS CRON — Crear en Railway dashboard (New Service → GitHub Repo)
-#
-# En cada servicio cron:
-#   1. Settings → Source → Root Directory: (vacío)
-#   2. Settings → Deploy → Custom Start Command: (el comando de abajo)
-#   3. Settings → Deploy → Cron Schedule: (el schedule de abajo)
-#   4. Copiar las Variables de entorno del servicio principal
-# ════════════════════════════════════════════════════════════════════════════
-#
-# ── Cron 1: auto_salidas ────────────────────────────────────────────────────
-#   Custom Start Command: python manage.py auto_salidas
-#   Cron Schedule:        0 6 * * *
-#   Hora:                 06:00 UTC = 00:00 CST (medianoche México)
-#   Función:              Registra salida automática a maestros que no marcaron salida
-#
-# ── Cron 2: generar_faltas ──────────────────────────────────────────────────
-#   Custom Start Command: python manage.py generar_faltas
-#   Cron Schedule:        */30 * * * *
-#   Hora:                 cada 30 minutos
-#   Función:              Genera falta a maestros cuya hora_salida ya pasó y no marcaron
+# $RAILWAY_SERVICE_NAME detecta qué servicio está corriendo:
+#   auto_salidas   → cron 0 6 * * *     (06:00 UTC = 00:00 CST)
+#   generar_faltas → cron */30 * * * *  (cada 30 min)
+#   cualquier otro → servidor principal (migrate + gunicorn)
+startCommand = "[ \"$RAILWAY_SERVICE_NAME\" = 'auto_salidas' ] && exec python manage.py auto_salidas; [ \"$RAILWAY_SERVICE_NAME\" = 'generar_faltas' ] && exec python manage.py generar_faltas; python manage.py migrate --no-input && python manage.py crear_admin && exec gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"
 
