@@ -13,5 +13,5 @@ startCommand = "python manage.py migrate --no-input && python manage.py crear_ad
 # ── Cron 2: generar-faltas ──────────────────────────────────────────────────
 # Crea un segundo servicio CRON en Railway con:
 #   Custom Start Command: python manage.py generar_faltas
-#   Cron Schedule:        5 6 * * *   (06:05 UTC = 00:05 CST México, corre justo después)
+#   Cron Schedule:        */30 * * * *   (cada 30 min — genera falta en cuanto pasa hora_salida)
 #   Root Directory:       Backend

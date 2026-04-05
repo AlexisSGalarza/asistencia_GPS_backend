@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.utils import timezone
 from datetime import datetime as _dt, time as _time
 from .models import Perimetro, Asistencia, Incidencia, RedAutorizada
+from apps.users.models import Horario
 
 
 class RedAutorizadaSerializer(serializers.ModelSerializer):
@@ -51,7 +52,7 @@ class AsistenciaSerializer(serializers.ModelSerializer):
 class RegistrarAsistenciaSerializer(serializers.Serializer):
     """
     Registra entrada o salida de un maestro.
-    Valida perímetro GPS. WiFi se guarda para auditoría pero no bloquea.
+    Valida perímetro GPS y red Wi-Fi autorizada. Ambos son obligatorios.
     Solo permite una entrada y una salida por día.
     """
     tipo = serializers.ChoiceField(choices=Asistencia.Tipo.choices)
@@ -69,6 +70,16 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
         usuario = self.context['usuario']
         hoy = timezone.localtime().date()
         tipo = data['tipo']
+
+        # Verificar que el usuario tiene horario programado para hoy
+        dia_semana = hoy.weekday()
+        horario_hoy = Horario.objects.filter(usuario=usuario, dia_semana=dia_semana).first()
+        if not horario_hoy:
+            nombres_dia = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+            raise serializers.ValidationError(
+                f'No tienes horario programado para el {nombres_dia[dia_semana]}. '
+                f'No puedes registrar asistencia.'
+            )
 
         # Rango UTC del día México — evita el bug cuando el maestro marca
         # después de las 18:00 CST (= 00:00 UTC del día siguiente)
@@ -113,15 +124,7 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
         wifi_valido = False
         red_autorizada = None
 
-        if bssid:
-            red_autorizada = RedAutorizada.objects.filter(
-                bssid__iexact=bssid,
-                activo=True,
-            ).first()
-            if red_autorizada:
-                wifi_valido = True
-
-        if not wifi_valido and ssid:
+        if ssid:
             red_autorizada = RedAutorizada.objects.filter(
                 ssid__iexact=ssid,
                 activo=True,
@@ -131,6 +134,12 @@ class RegistrarAsistenciaSerializer(serializers.Serializer):
 
         data['wifi_valido'] = wifi_valido
         data['red_autorizada'] = red_autorizada
+
+        if not wifi_valido:
+            raise serializers.ValidationError(
+                'No estás conectado a una red Wi-Fi autorizada. '
+                'Conéctate a la red del plantel e intenta de nuevo.'
+            )
 
         # Validar GPS
         lat = data.get('latitud')

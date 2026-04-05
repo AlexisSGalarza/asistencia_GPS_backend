@@ -1,15 +1,17 @@
 """
 Comando Django: generar_faltas
-Corre diariamente (sugerido: 06:05 UTC = 00:05 CST) y genera una
-incidencia de tipo 'falta' a los maestros que:
-  - Tienen horario asignado para el día procesado, Y
-  - No registraron ninguna entrada válida ese día.
+Corre cada 30 minutos y genera una incidencia de tipo 'falta' a los maestros que:
+  - Tienen horario asignado para el día actual, Y
+  - Su hora_salida ya pasó ese día, Y
+  - No registraron ninguna entrada válida.
 
 Uso manual:
     python manage.py generar_faltas [--dry-run] [--fecha YYYY-MM-DD]
 
+Nota: --fecha procesa todos los maestros con horario ese día sin filtro de hora.
+
 Cron sugerido (Railway / crontab):
-    5 6 * * * /ruta/venv/bin/python /ruta/manage.py generar_faltas >> /var/log/generar_faltas.log 2>&1
+    */30 * * * * /ruta/venv/bin/python /ruta/manage.py generar_faltas >> /var/log/generar_faltas.log 2>&1
 """
 from datetime import datetime, time, timedelta, date as _date
 
@@ -49,11 +51,13 @@ class Command(BaseCommand):
         tz_mx = timezone.get_current_timezone()
         ahora_mx = timezone.localtime()
 
-        # Día a procesar: ayer en hora México (o --fecha si se especifica)
+        # Día a procesar: hoy en hora México (o --fecha si se especifica manualmente)
         if options['fecha']:
             fecha = _date.fromisoformat(options['fecha'])
+            solo_hora_pasada = False  # procesa todos sin filtro de hora
         else:
-            fecha = ahora_mx.date() - timedelta(days=1)
+            fecha = ahora_mx.date()
+            solo_hora_pasada = True  # solo maestros cuya hora_salida ya pasó
 
         # weekday() → 0=Lunes … 6=Domingo (coincide con dia_semana del modelo Horario)
         dia_semana = fecha.weekday()
@@ -67,11 +71,21 @@ class Command(BaseCommand):
         )
 
         # Maestros activos con horario asignado para ese día de la semana
-        maestros_con_horario = Usuario.objects.filter(
+        maestros_qs = Usuario.objects.filter(
             rol__nombre=Rol.Nombre.MAESTRO,
             activo=True,
             horarios__dia_semana=dia_semana,
         ).distinct()
+
+        # Si es ejecución automática, solo procesar maestros cuya hora_salida ya pasó
+        if solo_hora_pasada:
+            hora_actual = ahora_mx.time()
+            maestros_qs = maestros_qs.filter(
+                horarios__dia_semana=dia_semana,
+                horarios__hora_salida__lte=hora_actual,
+            ).distinct()
+
+        maestros_con_horario = maestros_qs
 
         if not maestros_con_horario.exists():
             self.stdout.write(self.style.SUCCESS(
